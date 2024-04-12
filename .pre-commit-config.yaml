@@ -47,6 +47,7 @@ repos:
         # https://github.com/pre-commit/pre-commit/issues/1580
         language: system
         types: [ python ]
+        exclude: tests/
 
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.4.0

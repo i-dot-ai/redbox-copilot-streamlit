@@ -4,6 +4,7 @@ from redbox.models.feedback import Feedback
 from redbox.models.file import (
     Chunk,
     ChunkStatus,
+    ContentType,
     File,
     FileStatus,
     ProcessingStatusEnum,
@@ -29,6 +30,7 @@ __all__ = [
     "Chunk",
     "ChunkStatus",
     "Collection",
+    "ContentType",
     "Feedback",
     "File",
     "FileStatus",
