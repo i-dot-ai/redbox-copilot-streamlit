@@ -6,7 +6,7 @@ repos:
     hooks:
       - id: check-added-large-files
         name: Check for files larger than 5 MB
-        args: [ "--maxkb=5120" ]
+        args: [ --maxkb=5120 ]
       - id: end-of-file-fixer
         name: Check for a blank line at the end of scripts (auto-fixes)
         exclude: '\.Rd'
@@ -29,18 +29,35 @@ repos:
     rev: 1.7.6
     hooks:
     -   id: bandit
-        args: [ "-c", "pyproject.toml", "-ll", "-r", "./ask_ai" ]
+        args: [
+          -c, pyproject.toml,
+          -ll,
+          -r, .
+        ]
         additional_dependencies: [ "bandit[toml]" ]
+
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.8.0
     hooks:
     -   id: mypy
-        args: ["--ignore-missing-imports"]
+        args: [
+          --ignore-missing-imports
+        ]
+        additional_dependencies:
+          - types-requests
+          - types-markdown
+          - types-python-dateutil
+        types: [python]
+
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.4.0
     hooks:
     -   id: detect-secrets
         exclude: poetry.lock
+        args: [
+          --baseline, .secrets.baseline
+        ]
+
   - repo: local
     hooks:
     -   id: detect-ip
@@ -49,18 +66,19 @@ repos:
         language: pygrep
         exclude: '^static/|\.lock'
         files: .
+
   - repo: local
     hooks:
     -   id: detect-aws-account
         name: Detect AWS account numbers
         language: pygrep
         entry: ':\d{12}:'
+
   - repo: https://github.com/mxab/pre-commit-trivy.git
     rev: v0.3.0
     hooks:
       - id: trivyfs-docker
-        args:
-          - --skip-dirs
-          - ./tests
-          - --ignore-unfixed
-          - . # last arg indicates the path/file to scan
+        args: [
+          --skip-dirs, ./tests
+          --ignore-unfixed, . # last arg indicates the path/file to scan
+        ]

@@ -20,8 +20,8 @@ flowchart TD;
         subgraph FileChunker
 
         end
-        
-        
+
+
     end
     subgraph data
         upload
@@ -43,7 +43,7 @@ flowchart TD;
     upload_page <-->|parses with| FileChunker
     upload_page -->|saves| chunks
     upload_page -->|indexes| Embedder
-    
+
     Embedder -->|embeds| chunks
     Embedder -->|populates| vectordb
     Embedder -->|embeds| SentenceTransformer
@@ -56,10 +56,10 @@ flowchart TD;
     LLM -->|brokers| claude-2
 
     chat_page -->|question| ConversationalRetrievalChain
-    
+
     spotlight_page <-->|searches| vectordb
     spotlight_page -->|summarises| LLM
 
-    
+
 
 ```

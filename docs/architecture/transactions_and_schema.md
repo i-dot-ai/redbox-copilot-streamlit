@@ -60,19 +60,19 @@ erDiagram
         string name
         UUID[] users
     }
-    
+
     FileRecord }|--|| "UserGroup(django.models.Group)": "FileRecord.owner"
     FileRecord {
         UUID uuid
         UUID owner
-        string key 
+        string key
     }
 
     ChatMessage {
         UUID uuid
         UUID chat_history
         string text
-        string role 
+        string role
     }
 
     ChatMessage }|--|| ChatHistory: "ChatMessage.chat_history"

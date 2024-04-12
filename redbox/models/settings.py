@@ -9,6 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class ElasticLocalSettings(BaseModel):
     """settings required for a local/ec2 instance of elastic"""
+
     host: str = "elasticsearch"
     port: int = 9200
     scheme: str = "http"
@@ -19,6 +20,7 @@ class ElasticLocalSettings(BaseModel):
 
 class ElasticCloudSettings(BaseModel):
     """settings required for elastic-cloud"""
+
     api_key: str
     cloud_id: str
 
@@ -69,7 +71,7 @@ class Settings(BaseSettings):
     core_api_host: str = "http://core-api"
     core_api_port: int = 5002
 
-    model_config = SettingsConfigDict(env_file=".env", env_nested_delimiter='__')
+    model_config = SettingsConfigDict(env_file=".env", env_nested_delimiter="__")
 
     def elasticsearch_client(self) -> Elasticsearch:
         if isinstance(self.elastic, ElasticLocalSettings):

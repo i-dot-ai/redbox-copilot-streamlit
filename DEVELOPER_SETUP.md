@@ -48,7 +48,7 @@ To build the images needed to run the project, use this command:
 make build
 ```
 
-or 
+or
 
 ``` bash
 docker compose build
@@ -60,7 +60,7 @@ Once those images have built, you can run them using:
 make run
 ```
 
-or 
+or
 
 ``` bash
 docker compose up
