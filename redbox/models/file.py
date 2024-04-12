@@ -49,14 +49,16 @@ class File(PersistableModel):
     name: str = Field(description="file name")
     text: Optional[str] = Field(description="file content", default=None)
 
-    @computed_field
+    @computed_field  # type: ignore[misc]
+    @property
     def text_hash(self) -> str:
         return hashlib.md5(
             (self.text or "").encode(encoding="UTF-8", errors="strict"),
             usedforsecurity=False,
         ).hexdigest()
 
-    @computed_field
+    @computed_field  # type: ignore[misc]
+    @property
     def token_count(self) -> int:
         return len(encoding.encode(self.text or ""))
 
@@ -76,11 +78,13 @@ class Chunk(PersistableModel):
     metadata: dict
     embedding: Optional[list[float]] = Field(description="the vector representation of the text", default=None)
 
-    @computed_field
+    @computed_field  # type: ignore[misc]
+    @property
     def text_hash(self) -> str:
         return hashlib.md5(self.text.encode(encoding="UTF-8", errors="strict"), usedforsecurity=False).hexdigest()
 
-    @computed_field
+    @computed_field  # type: ignore[misc]
+    @property
     def token_count(self) -> int:
         return len(encoding.encode(self.text))
 

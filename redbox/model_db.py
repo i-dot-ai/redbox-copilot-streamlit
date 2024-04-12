@@ -34,8 +34,8 @@ class SentenceTransformerDB(SentenceTransformer):
             object="list",
             data=reformatted_embeddings,
             embedding_id=str(uuid4()),
-            model=self.model_name,
-            model_info=self.get_model_info(),
+            embedding_model=self.model_name,
+            embedding_model_info=self.get_model_info(),
         )
 
         return output

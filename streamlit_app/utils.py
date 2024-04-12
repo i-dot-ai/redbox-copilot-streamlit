@@ -17,10 +17,7 @@ from langchain.callbacks import FileCallbackHandler
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains.base import Chain
 from langchain.schema.output import LLMResult
-from langchain.vectorstores.elasticsearch import (
-    ApproxRetrievalStrategy,
-    ElasticsearchStore,
-)
+from langchain.vectorstores.elasticsearch import ApproxRetrievalStrategy, ElasticsearchStore
 from langchain_community.chat_models import ChatLiteLLM
 from langchain_community.embeddings import SentenceTransformerEmbeddings
 from loguru import logger
@@ -80,7 +77,7 @@ def init_session_state() -> dict:
     ENV = dict(os.environ)
     # Update the environment with the .env file
     if DOT_ENV:
-        ENV.update(DOT_ENV)
+        ENV.update(DOT_ENV)  # type: ignore[arg-type]
 
     st.markdown(
         """

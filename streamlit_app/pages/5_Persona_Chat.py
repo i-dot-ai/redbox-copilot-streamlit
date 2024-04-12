@@ -73,7 +73,7 @@ if "messages" not in st.session_state or clear_chat:
     st.session_state["messages"] = INITIAL_CHAT_PROMPT
     # clear feedback
     for key in list(st.session_state.keys()):
-        if key.startswith("feedback_"):
+        if str(key).startswith("feedback_"):
             del st.session_state[key]
 if "ai_message_markdown_lookup" not in st.session_state:
     st.session_state["ai_message_markdown_lookup"] = {}

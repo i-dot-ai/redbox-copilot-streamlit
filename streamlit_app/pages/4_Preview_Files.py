@@ -66,11 +66,12 @@ if preview_file_button or "file_uuid" in url_params:
 
     if file.content_type in file_preview.render_methods:
         if (file.content_type == ".pdf") & ("page_number" in url_params):
-            page_number = url_params["page_number"]
-            if page_number[0] == "[":
-                page_number = min(page_number[1:-1].split(r","))
+            page_number_raw = url_params["page_number"]
+            if page_number_raw[0] == "[":
+                page_numbers = page_number_raw[1:-1].split(r",")
+                page_number = min([int(p) for p in page_numbers])
             else:
-                page_number = int(page_number)
+                page_number = int(page_number_raw)
             file_preview._render_pdf(file, page_number=page_number)
         else:
             file_preview.st_render(file)

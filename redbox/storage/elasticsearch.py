@@ -1,3 +1,4 @@
+import json
 import logging
 from typing import Optional
 from uuid import UUID
@@ -38,7 +39,7 @@ class ElasticsearchStorageHandler(BaseStorageHandler):
         resp = self.es_client.index(
             index=target_index,
             id=str(item.uuid),
-            body=item.json(),
+            body=json.loads(item.model_dump_json()),
         )
         return resp
 
@@ -67,7 +68,7 @@ class ElasticsearchStorageHandler(BaseStorageHandler):
         resp = self.es_client.index(
             index=target_index,
             id=str(item.uuid),
-            body=item.json(),
+            body=json.loads(item.model_dump_json()),
         )
         return resp
 

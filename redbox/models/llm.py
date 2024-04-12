@@ -20,8 +20,8 @@ class EmbeddingResponse(BaseModel):
     object: Literal["list"]
     data: list[Embedding]
     embedding_id: str
-    model: str
-    model_info: ModelInfo
+    embedding_model: str
+    embedding_model_info: ModelInfo
 
 
 class EmbeddingRequest(BaseModel):
