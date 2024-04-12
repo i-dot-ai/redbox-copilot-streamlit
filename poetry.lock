@@ -316,17 +316,6 @@ files = [
 ]
 
 [[package]]
-name = "async-timeout"
-version = "4.0.3"
-description = "Timeout context manager for asyncio programs"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "async-timeout-4.0.3.tar.gz", hash = "sha256:4640d96be84d82d02ed59ea2b7105a0f7b33abe8703703cd0ab0bf87c427522f"},
-    {file = "async_timeout-4.0.3-py3-none-any.whl", hash = "sha256:7405140ff1230c310e51dc27b3145b9092d659ce68ff733fb0cefe3ee42be028"},
-]
-
-[[package]]
 name = "attrs"
 version = "23.2.0"
 description = "Classes Without Boilerplate"
@@ -901,31 +890,6 @@ types-awscrt = "*"
 
 [package.extras]
 botocore = ["botocore"]
-
-[[package]]
-name = "bump2version"
-version = "1.0.1"
-description = "Version-bump your software with a single command!"
-optional = false
-python-versions = ">=3.5"
-files = [
-    {file = "bump2version-1.0.1-py2.py3-none-any.whl", hash = "sha256:37f927ea17cde7ae2d7baf832f8e80ce3777624554a653006c9144f8017fe410"},
-    {file = "bump2version-1.0.1.tar.gz", hash = "sha256:762cb2bfad61f4ec8e2bdf452c7c267416f8c70dd9ecb1653fd0bbb01fa936e6"},
-]
-
-[[package]]
-name = "bumpversion"
-version = "0.6.0"
-description = "Version-bump your software with a single command!"
-optional = false
-python-versions = "*"
-files = [
-    {file = "bumpversion-0.6.0-py2.py3-none-any.whl", hash = "sha256:4eb3267a38194d09f048a2179980bb4803701969bff2c85fa8f6d1ce050be15e"},
-    {file = "bumpversion-0.6.0.tar.gz", hash = "sha256:4ba55e4080d373f80177b4dabef146c07ce73c7d1377aabf9d3c3ae1f94584a6"},
-]
-
-[package.dependencies]
-bump2version = "*"
 
 [[package]]
 name = "cachetools"
@@ -1522,21 +1486,6 @@ files = [
 tests = ["asttokens (>=2.1.0)", "coverage", "coverage-enable-subprocess", "ipython", "littleutils", "pytest", "rich"]
 
 [[package]]
-name = "fast-depends"
-version = "2.4.2"
-description = "FastDepends - extracted and cleared from HTTP domain logic FastAPI Dependency Injection System. Async and sync are both supported."
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "fast_depends-2.4.2-py3-none-any.whl", hash = "sha256:1b154d9d2e4bd0de28d18ee5d0bf06637785b6cb3e362586f372da125ba5f153"},
-    {file = "fast_depends-2.4.2.tar.gz", hash = "sha256:faf8961ae8854dbf43d7cb82217771a9a224c05c67ccfcdc5e04c2e364098000"},
-]
-
-[package.dependencies]
-anyio = ">=3.0.0,<5.0.0"
-pydantic = ">=1.7.4,<1.8 || >1.8,<1.8.1 || >1.8.1,<3.0.0"
-
-[[package]]
 name = "fastjsonschema"
 version = "2.19.1"
 description = "Fastest Python implementation of JSON schema"
@@ -1549,37 +1498,6 @@ files = [
 
 [package.extras]
 devel = ["colorama", "json-spec", "jsonschema", "pylint", "pytest", "pytest-benchmark", "pytest-cache", "validictory"]
-
-[[package]]
-name = "faststream"
-version = "0.4.7"
-description = "FastStream: the simplest way to work with a messaging queues"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "faststream-0.4.7-py3-none-any.whl", hash = "sha256:2f35bc1cf236807a93a078b79018a4a6e4636b5581fd9a91bd3b511dddc854ba"},
-    {file = "faststream-0.4.7.tar.gz", hash = "sha256:f404c1f350dee5742ce64c111526a80e0d984ce7964a04d0f2ec71beb7d982de"},
-]
-
-[package.dependencies]
-anyio = ">=3.7.1,<5"
-fast-depends = ">=2.4.0b0,<2.5.0"
-redis = {version = ">=5.0.0,<6.0.0", optional = true, markers = "extra == \"redis\""}
-typer = ">=0.9,<1"
-typing-extensions = ">=4.8.0"
-
-[package.extras]
-confluent = ["confluent-kafka (>=2,<3)"]
-dev = ["detect-secrets (==1.4.0)", "faststream[confluent,devdocs,docs,kafka,lint,nats,rabbit,redis,testing]", "pre-commit (==3.5.0)", "pre-commit (==3.6.2)"]
-devdocs = ["black (==24.1.1)", "cairosvg (==2.7.1)", "mdx-include (==1.4.2)", "mike (==2.0.0)", "mkdocs-git-revision-date-localized-plugin (==1.2.4)", "mkdocs-glightbox (==0.3.7)", "mkdocs-literate-nav (==0.6.1)", "mkdocs-macros-plugin (==1.0.5)", "mkdocs-material (==9.5.11)", "mkdocs-minify-plugin (==0.8.0)", "mkdocs-static-i18n (==1.2.0)", "mkdocstrings[python] (==0.24.1)", "pillow (==10.2.0)", "requests"]
-docs = ["fastapi (>=0.100.0,<1.0.0)", "uvicorn (>=0.17.0,<1.0.0)"]
-kafka = ["aiokafka (>=0.9,<0.11)"]
-lint = ["bandit (==1.7.7)", "confluent-kafka-stubs", "mypy (==1.8.0)", "ruff (==0.3.0)", "semgrep (==1.62.0)", "types-docutils", "types-pygments", "types-pyyaml", "types-redis", "types-setuptools", "types-ujson"]
-nats = ["nats-py (>=2.3.1,<=2.7.0)"]
-rabbit = ["aio-pika (>=9,<10)"]
-redis = ["redis (>=5.0.0,<6.0.0)"]
-test-core = ["coverage[toml] (==7.4.3)", "dirty-equals (==0.7.1.post0)", "pytest (==8.0.1)", "pytest-asyncio (==0.23.5)", "pytest-rerunfailures (==13.0)", "pytest-timeout (==2.2.0)"]
-testing = ["email-validator (==2.1.1)", "fastapi (==0.109.2)", "faststream[test-core]", "httpx (==0.27.0)", "pydantic-settings (>=2.0.0,<3.0.0)", "pyyaml (==6.0.1)", "watchfiles (==0.21.0)"]
 
 [[package]]
 name = "filelock"
@@ -2923,6 +2841,21 @@ files = [
 
 [package.dependencies]
 lxml = "*"
+
+[[package]]
+name = "markdown"
+version = "3.6"
+description = "Python implementation of John Gruber's Markdown."
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "Markdown-3.6-py3-none-any.whl", hash = "sha256:48f276f4d8cfb8ce6527c8f79e2ee29708508bf4d40aa410fbc3b4ee832c850f"},
+    {file = "Markdown-3.6.tar.gz", hash = "sha256:ed4f41f6daecbeeb96e576ce414c41d2d876daa9a16cb35fa8ed8c2ddfad0224"},
+]
+
+[package.extras]
+docs = ["mdx-gh-links (>=0.2)", "mkdocs (>=1.5)", "mkdocs-gen-files", "mkdocs-literate-nav", "mkdocs-nature (>=0.6)", "mkdocs-section-index", "mkdocstrings[python]"]
+testing = ["coverage", "pyyaml"]
 
 [[package]]
 name = "markdown-it-py"
@@ -4343,25 +4276,6 @@ files = [
 typing-extensions = ">=4.6.0,<4.7.0 || >4.7.0"
 
 [[package]]
-name = "pydantic-settings"
-version = "2.2.1"
-description = "Settings management using Pydantic"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "pydantic_settings-2.2.1-py3-none-any.whl", hash = "sha256:0235391d26db4d2190cb9b31051c4b46882d28a51533f97440867f012d4da091"},
-    {file = "pydantic_settings-2.2.1.tar.gz", hash = "sha256:00b9f6a5e95553590434c0fa01ead0b216c3e10bc54ae02e37f359948643c5ed"},
-]
-
-[package.dependencies]
-pydantic = ">=2.3.0"
-python-dotenv = ">=0.21.0"
-
-[package.extras]
-toml = ["tomli (>=2.0.1)"]
-yaml = ["pyyaml (>=6.0.1)"]
-
-[[package]]
 name = "pydeck"
 version = "0.8.0"
 description = "Widget for deck.gl maps"
@@ -4533,6 +4447,21 @@ files = [
 
 [package.dependencies]
 six = ">=1.5"
+
+[[package]]
+name = "python-docx"
+version = "1.1.0"
+description = "Create, read, and update Microsoft Word .docx files."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "python-docx-1.1.0.tar.gz", hash = "sha256:5829b722141cf1ab79aedf0c34d9fe9924b29764584c0f2164eb2b02dcdf17c9"},
+    {file = "python_docx-1.1.0-py3-none-any.whl", hash = "sha256:bac9773278098a1ddc43a52d84e22f5909c4a3080a624530b3ecb3771b07c6cd"},
+]
+
+[package.dependencies]
+lxml = ">=3.1.0"
+typing-extensions = "*"
 
 [[package]]
 name = "python-dotenv"
@@ -4941,24 +4870,6 @@ files = [
 
 [package.extras]
 full = ["numpy"]
-
-[[package]]
-name = "redis"
-version = "5.0.3"
-description = "Python client for Redis database and key-value store"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "redis-5.0.3-py3-none-any.whl", hash = "sha256:5da9b8fe9e1254293756c16c008e8620b3d15fcc6dde6babde9541850e72a32d"},
-    {file = "redis-5.0.3.tar.gz", hash = "sha256:4973bae7444c0fbed64a06b87446f79361cb7e4ec1538c022d696ed7a5015580"},
-]
-
-[package.dependencies]
-async-timeout = {version = ">=4.0.3", markers = "python_full_version < \"3.11.3\""}
-
-[package.extras]
-hiredis = ["hiredis (>=1.0.0)"]
-ocsp = ["cryptography (>=36.0.1)", "pyopenssl (==20.0.1)", "requests (>=2.26.0)"]
 
 [[package]]
 name = "referencing"
@@ -5579,17 +5490,6 @@ files = [
 docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "pygments-github-lexers (==0.0.5)", "rst.linker (>=1.9)", "sphinx (<7.2.5)", "sphinx (>=3.5)", "sphinx-favicon", "sphinx-inline-tabs", "sphinx-lint", "sphinx-notfound-page (>=1,<2)", "sphinx-reredirects", "sphinxcontrib-towncrier"]
 testing = ["build[virtualenv]", "filelock (>=3.4.0)", "importlib-metadata", "ini2toml[lite] (>=0.9)", "jaraco.develop (>=7.21)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "mypy (==1.9)", "packaging (>=23.2)", "pip (>=19.1)", "pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-home (>=0.5)", "pytest-mypy (>=0.9.1)", "pytest-perf", "pytest-ruff (>=0.2.1)", "pytest-timeout", "pytest-xdist (>=3)", "tomli", "tomli-w (>=1.0.0)", "virtualenv (>=13.0.0)", "wheel"]
 testing-integration = ["build[virtualenv] (>=1.0.3)", "filelock (>=3.4.0)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "packaging (>=23.2)", "pytest", "pytest-enabler", "pytest-xdist", "tomli", "virtualenv (>=13.0.0)", "wheel"]
-
-[[package]]
-name = "shellingham"
-version = "1.5.4"
-description = "Tool to Detect Surrounding Shell"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "shellingham-1.5.4-py2.py3-none-any.whl", hash = "sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686"},
-    {file = "shellingham-1.5.4.tar.gz", hash = "sha256:8dbca0739d487e5bd35ab3ca4b36e11c4078f3a234bfce294b0a0291363404de"},
-]
 
 [[package]]
 name = "six"
@@ -6313,23 +6213,6 @@ tests = ["autopep8", "flake8", "isort", "numpy", "pytest", "scipy (>=1.7.1)", "t
 tutorials = ["matplotlib", "pandas", "tabulate", "torch"]
 
 [[package]]
-name = "typer"
-version = "0.12.3"
-description = "Typer, build great CLIs. Easy to code. Based on Python type hints."
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "typer-0.12.3-py3-none-any.whl", hash = "sha256:070d7ca53f785acbccba8e7d28b08dcd88f79f1fbda035ade0aecec71ca5c914"},
-    {file = "typer-0.12.3.tar.gz", hash = "sha256:49e73131481d804288ef62598d97a1ceef3058905aa536a1134f90891ba35482"},
-]
-
-[package.dependencies]
-click = ">=8.0.0"
-rich = ">=10.11.0"
-shellingham = ">=1.3.0"
-typing-extensions = ">=3.7.4.3"
-
-[[package]]
 name = "types-awscrt"
 version = "0.20.5"
 description = "Type annotations and code completion for awscrt"
@@ -6982,4 +6865,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.12"
-content-hash = "1f132e47e36dbe2157a308f054b92275136e88de42c756d46935557dd6bf9bc5"
+content-hash = "aecef98b485e3023439fd1e7eb5d3a8f4cc4f3925de19ab5d71f62f75211c0ce"

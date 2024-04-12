@@ -1,5 +1,6 @@
 import streamlit as st
-from utils import init_session_state
+
+from .utils import init_session_state
 
 st.set_page_config(
     page_title="Redbox Copilot",
