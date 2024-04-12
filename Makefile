@@ -24,10 +24,8 @@ format:
 	poetry run ruff format **/*.ipynb
 
 safe:
-	poetry run bandit -ll -r ./redbox
-	poetry run bandit -ll -r ./streamlit_app
-	poetry run mypy ./redbox --ignore-missing-imports
-	poetry run mypy ./streamlit_app --ignore-missing-imports
+	poetry run bandit -ll -c pyproject.toml -r .
+	poetry run mypy --config-file pyproject.toml
 
 checktypes:
 	poetry run mypy redbox streamlit_app --ignore-missing-imports

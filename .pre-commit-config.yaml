@@ -41,13 +41,12 @@ repos:
     hooks:
     -   id: mypy
         args: [
-          --ignore-missing-imports
+          --config-file, pyproject.toml
         ]
-        additional_dependencies:
-          - types-requests
-          - types-markdown
-          - types-python-dateutil
-        types: [python]
+        # Use installed environment rather than fresh one to match command line use
+        # https://github.com/pre-commit/pre-commit/issues/1580
+        language: system
+        types: [ python ]
 
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.4.0
@@ -82,3 +81,8 @@ repos:
           --skip-dirs, ./tests
           --ignore-unfixed, . # last arg indicates the path/file to scan
         ]
+
+  - repo: https://github.com/fpgmaas/deptry.git
+    rev: 0.16.1
+    hooks:
+      - id: deptry
