@@ -8,7 +8,9 @@
     "ghcr.io/devcontainers-contrib/features/black:2": {},
     "ghcr.io/devcontainers-contrib/features/isort:2": {},
     "ghcr.io/jungaretti/features/make:1": {},
-    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+      "version": "latest"
+    }
   },
   "runArgs": [
     "--network",
@@ -19,5 +21,20 @@
     5601,
     9200,
     9001
-  ]
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-azuretools.vscode-docker",
+        "github.vscode-github-actions"
+      ],
+      "settings": {
+        "workbench.editor.wrapTabs": true,
+        "workbench.editor.tabSizing": "shrink"
+      }
+    }
+  },
+  "shutdownAction": "stopContainer"
 }
