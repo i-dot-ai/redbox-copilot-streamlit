@@ -36,6 +36,7 @@ def test_upload_to_elastic(file_pdf_path, s3_client):
                 "type": ".pdf",
                 "location": authenticated_s3_url,
             },
+            timeout=10,
         )
         assert response.status_code == 200
         file_uuid = response.json()
@@ -46,17 +47,10 @@ def test_upload_to_elastic(file_pdf_path, s3_client):
 
         while time.time() - start_time < timeout:
             time.sleep(1)
-            chunk_response = requests.get(
-                f"http://localhost:5002/file/{file_uuid}/status"
-            )
-            if (
-                chunk_response.status_code == 200 and
-                chunk_response.json()["processing_status"] == "complete"
-            ):
+            chunk_response = requests.get(f"http://localhost:5002/file/{file_uuid}/status", timeout=10)
+            if chunk_response.status_code == 200 and chunk_response.json()["processing_status"] == "complete":
                 return  # test passed
             else:
                 error = chunk_response.text
 
-        pytest.fail(
-            reason=f"failed to get embedded chunks within {timeout} seconds, potential error: {error}"
-        )
+        pytest.fail(reason=f"failed to get embedded chunks within {timeout} seconds, potential error: {error}")

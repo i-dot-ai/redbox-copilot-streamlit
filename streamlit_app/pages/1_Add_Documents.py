@@ -1,10 +1,9 @@
 import pathlib
-from datetime import date
 from uuid import UUID
 
 import streamlit as st
 
-from redbox.models import Collection, File
+from redbox.models import Collection, ContentType, File
 from redbox.parsing.file_chunker import FileChunker
 from streamlit_app.utils import init_session_state
 
@@ -46,7 +45,7 @@ new_collection = st.text_input("New collection name:")
 submitted = st.button("Upload to Redbox Copilot collection")
 
 
-if submitted:  # noqa: C901
+if submitted and uploaded_files is not None:  # noqa: C901
     if collection_selection == new_collection_str:
         if not new_collection:
             st.error("Please enter a collection name")
@@ -58,12 +57,14 @@ if submitted:  # noqa: C901
     # associate selected collection with the uploaded files
     if collection_selection == new_collection_str:
         collection_obj = Collection(
-            date=date.today().isoformat(),
             name=new_collection,
             creator_user_uuid=UUID(st.session_state.user_uuid),
         )
     elif collection_selection == no_collection_str:
-        collection_obj = Collection(date="", name="", creator_user_uuid=UUID(st.session_state.user_uuid))
+        collection_obj = Collection(
+            name="",
+            creator_user_uuid=UUID(st.session_state.user_uuid),
+        )
     else:
         collection_obj = st.session_state.storage_handler.read_item(
             item_uuid=collection_selection, model_type="Collection"
@@ -96,7 +97,7 @@ if submitted:  # noqa: C901
 
             file = File(
                 url=simple_s3_url,
-                content_type=file_type,
+                content_type=ContentType(file_type),
                 name=sanitised_name,
                 creator_user_uuid=UUID(st.session_state.user_uuid),
             )

@@ -1,4 +1,4 @@
-# 📮 Redbox Copilot
+# 📮 Redbox Copilot \[Streamlit app\]
 
 > [!IMPORTANT]
 > Incubation Project: This project is an incubation project; as such, we DON’T recommend using it in any critical use case. This project is in active development and a work in progress. This project may one day Graduate, in which case this disclaimer will be removed.
@@ -8,100 +8,81 @@ Redbox Copilot is a retrieval augmented generation (RAG) app that uses GenAI to 
 - **Better retrieval**. Redbox Copilot increases organisational memory by indexing documents
 - **Faster, accurate summarisation**. Redbox Copilot can summarise reports read months ago, supplement them with current work, and produce a first draft that lets civil servants focus on what they do best
 
-# Local Dev Setup
-
-The entire architecture runs in docker compose for local development. This includes locally hosting the app, databases, object store and orchestration. Therefore, you will need docker installed.
-
-## First time setup
-
-You will need to create a copy of the `.env.example` file as `.env` to store your secrets, such as your Anthropic API key (ask the team for the keys). The `.env` file should not be committed to GitHub.
-
-If you have issues with permissions, you may need to run `chmod 777 data/elastic/` to be able to write to the folder.
-
-## To run
-
-You can simply run:
-
-`docker compose up` or `make run`
-
-You'll find a series of useful `docker compose` commands already maded in [`Makefile`](./Makefile)
-
-Any time you update code for the the repo, you'll likely need to rebuild the containers.
-
-# Docs
-
-The docs are built using [MkDocs](https://www.mkdocs.org/). To run the docs locally, you can run:
-
-```bash
-make docs-serve
-```
-
-# Codespace
-For a quick start, you can use GitHub Codespaces to run the project in a cloud-based development environment. Click the button below to open the project in a new Codespace.
-
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/i-dot-ai/redbox-copilot?quickstart=1)
-
-# Development
-
-You will need to install `poppler` and `tesseract` to run the `ingester`
-- `brew install poppler`
-- `brew install tesseract`
-
-- Download and install [pre-commit](https://pre-commit.com) to benefit from pre-commit hooks
-  - `pip install pre-commit`
-  - `pre-commit install`
-
-# Testing
-- Unit tests and QA run in CI
-- At this time integration test(s) take 10+ mins to run so are triggered manually in CI
-
-# Dependencies
-
-This project uses a microservice architecture.
-
-Each microservice runs in its own container defined by a `Dockerfile`.
-
-For every microservice that we have written in python we define its dependencies using https://python-poetry.org/.
-
-This means that our project is structured approximately like this:
-
-```txt
-redbox-copilot/
-├── frontend/
-├── django_app
-│  ├── app/
-│  ├── static/
-│  ├── tests/
-│  ├── manage.py
-│  └── Dockerfile
-├── embedder
-│  ├── src/
-│  │  └── worker.py
-│  ├── tests/
-│  └── Dockerfile
-├── ingester
-│  ├── src/
-│  │  └── worker.py
-│  ├── tests/
-│  └── Dockerfile
-├── redbox/
-│  ├── exceptions/
-│  ├── export/
-│  ├── llm/
-│  ├── models/
-│  ├── parsing/
-│  ├── storage
-│  ├── tests/
-│  └── Dockerfile
-├── docker-compose.yaml
-├── pyproject.toml
-├── Makefile
-└── README.md
-```
+This repo contains a [Streamlit frontend](https://streamlit.io) for the [core Redbox project](https://github.com/i-dot-ai/redbox-copilot).
 
 # Contributing
 
+Development is done through [dev containers](https://code.visualstudio.com/docs/devcontainers/create-dev-container) to control for varying dependency requirements across operating systems for libraries like [torch](https://pytorch.org/get-started/locally/).
+
+We use [poetry](https://python-poetry.org) to manage requirements, and these assume Linux.
+
 We welcome contributions to this project. Please see the [CONTRIBUTING.md](./CONTRIBUTING.md) file for more information.
+
+## First time setup
+
+Clone the repo to your local machine.
+
+### Dev container
+
+Before you build the container, get the absolute path to your repo:
+
+```console
+pwd
+```
+
+Copy this path.
+
+Build the container. When prompted, give the path you copied. See the [docker-outside-of-docker documentation](https://github.com/devcontainers/features/tree/main/src/docker-outside-of-docker) for information and troubleshooting.
+
+On some OSes, the container may not automatically share your GitHub SSH key with the host system. See [this answer on Stack Overflow](https://github.com/csci530-os/vscode-remote-devcontainer/issues/2#issuecomment-1251488797) to solve this.
+
+### Environment variables
+
+Set up environment variables. Use `.env.example` to get started.
+
+```console
+cp .env.example .env
+```
+
+Setting one of `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` is essential.
+
+If you have issues with permissions, you may need to run `chmod 777 data/elastic/` to be able to write to the folder.
+
+## Usage
+
+We use [GNU make](https://www.gnu.org/software/make/manual/make.html) to help run the project. To see all commands:
+
+```console
+make
+```
+
+To start the app:
+
+```console
+make up
+```
+
+To stop the app:
+
+```console
+make down
+```
+
+The project can take up a lot of space in docker image and build caches. It may be necessary to clear these from time to time.
+
+The following commands are potentially destrictive and so we don't give them easy make commands -- run them at your own risk.
+
+Clear your docker image cache:
+
+```console
+docker image prune
+```
+
+Clear your docker build cache:
+
+```console
+docker builder prune
+```
 
 # License
 
@@ -110,63 +91,3 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 # Security
 
 If you discover a security vulnerability within this project, please follow our [Security Policy](./SECURITY.md).
-
-## Troubleshooting
-
-#### Error: Elasticsearch 137
-
-```commandline
-ERROR: Elasticsearch exited unexpectedly, with exit code 137
-```
-This is caused by Elasticsearch not having enough memory.
-
-Increase total memory available to 8gb.
-
-```commandline
-colima down
-colima start --memory 8
-```
-
-#### Error: Docker... no space left on device
-
-```commandline
-docker: /var/lib/... no space left on device
-```
-
-This is caused by your own laptop being too full to create a new image.
-
-Clear out old docker artefacts:
-
-```commandline
-docker system prune --all --force
-```
-
-### Frontend
-
-
-#### CSS
-
-We depend on `govuk-frontend` for GOV.UK Design System styles.
-
-```
-npm install
-```
-
-Once this has been done, `django-compressor` should work automatically to
-compile the govuk-frontend SCSS on the first request and any subsequent request
-after the SCSS has changed. In the meantime it will read from `frontend/CACHE`,
-which is `.gitignore`d.
-
-When we get to production, we can prepopulate `frontend/CACHE` using `manage.py
-compress` before building our container, which will mean that every request
-will be served from the cache.
-
-`django-compressor` also takes care of fingerprinting and setting cache headers
-for our CSS so it can be cached.
-
-#### Fonts and images
-
-The govuk assets are versioned in the `npm` package. On initial app setup you will need to run `poetry run python manage.py collectstatic` to copy them to the `frontend` folder from where `runserver` can serve them.
-
-We’ll revisit this process when we deploy the app.
-

@@ -78,7 +78,7 @@ feedback_kwargs = {
 
 # endregion
 
-spotlight_file_select = st.empty()
+# spotlight_file_select = st.empty()
 
 
 def update_token_budget_tracker():
@@ -117,7 +117,6 @@ if "submitted" not in st.session_state:
 # region ===== URL PARAM INJECTION =====
 url_params = st.query_params.to_dict()
 
-
 collections = st.session_state.storage_handler.read_all_items("Collection")
 collections_by_uuid_map = {x.uuid: x for x in collections}
 collection = None
@@ -134,34 +133,29 @@ collection_select = st.selectbox(
 )
 
 if collection_select is not None:
-    url_params["collection_title"] = [collection_select]
+    url_params["collection_title"] = str(collection_select)
 
+files_from_url = []
 if "collection_title" in url_params:
-    collection_title = url_params["collection_title"][0]
-    collection = st.session_state.storage_handler.read_item(item_uuid=collection_title, model_type="Collection")
+    collection_title = url_params["collection_title"]
+    collection = st.session_state.storage_handler.read_item(
+        item_uuid=uuid.UUID(collection_title), model_type="Collection"
+    )
 
     files_from_url = [uuid.UUID(x) for x in collection.files]
     files_from_url = [x for x in files_from_url if x in parsed_files_uuid_map.keys()]
 
-    spotlight_file_select = st.multiselect(
-        label="Files",
-        options=parsed_files_uuid_map.keys(),
-        default=files_from_url,
-        on_change=clear_params,
-        format_func=lambda x: parsed_files_uuid_map[x].name,
-        key="selected_files",
-    )
-    update_token_budget_tracker()
-else:
-    spotlight_file_select = st.multiselect(
-        label="Files",
-        options=parsed_files_uuid_map.keys(),
-        default=[],
-        on_change=unsubmit_session_state,
-        format_func=lambda x: parsed_files_uuid_map[x].name,
-        key="selected_files",
-    )
-    update_token_budget_tracker()
+spotlight_file_select = st.multiselect(
+    label="Files",
+    options=parsed_files_uuid_map.keys(),
+    default=files_from_url,
+    on_change=clear_params,
+    format_func=lambda x: parsed_files_uuid_map[x].name,
+    key="selected_files",
+)
+
+update_token_budget_tracker()
+
 # endregion
 
 submitted = st.button("Redbox Copilot Summary")
@@ -335,7 +329,7 @@ if st.session_state.submitted:
         st.session_state.submitted = False
         st.query_params.clear()
 
-    delete_summary = st.sidebar.button(
+    delete_summary_button = st.sidebar.button(
         label="Delete Summary",
         on_click=delete_summary,
     )
