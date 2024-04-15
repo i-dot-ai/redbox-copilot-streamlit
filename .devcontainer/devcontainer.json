@@ -1,21 +1,22 @@
 {
   "image": "python:3.11-buster",
-  "postCreateCommand": "pip3 install poetry && apt update && apt install libgl-dev libmagic-dev docker.io  -y && poetry install && chmod 777 data/elastic",
-  "name": "redbox-dev",
+  "postCreateCommand": "pip3 install poetry && apt update && apt install libgl-dev libmagic-dev -y && chmod 777 data/elastic",
+  "name": "redbox-streamlit-dev",
   "features": {
     "ghcr.io/devcontainers/features/git:1": {},
-    "ghcr.io/devcontainers/features/terraform:1": {},
-    "ghcr.io/devcontainers-contrib/features/black:2": {},
-    "ghcr.io/devcontainers-contrib/features/isort:2": {},
     "ghcr.io/jungaretti/features/make:1": {},
-    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
-      "version": "latest"
-    }
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
   },
   "runArgs": [
     "--network",
-    "host" // use host networking so that the dev container can access the API when running the container locally
+    "host", // use host networking so that the dev container can access the API when running the container locally
+    "--name",
+    "redbox-streamlit-dev"
   ],
+  // Allows bind mounts
+  // https://github.com/devcontainers/features/tree/main/src/docker-outside-of-docker
+  "workspaceFolder": "${localWorkspaceFolder}",
+  "workspaceMount": "source=${localWorkspaceFolder},target=${localWorkspaceFolder},type=bind",
   "forwardPorts": [
     8501,
     5601,
