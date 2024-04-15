@@ -28,7 +28,7 @@ ignore = ["DEP003", "DEP004"]
 known_first_party = ["utils"]
 
 [tool.deptry.per_rule_ignores]
-DEP002 = ["torch"]
+DEP002 = ["torch", "torchvision"]
 
 [tool.poetry]
 name = "redbox"
@@ -37,6 +37,9 @@ description = ""
 authors = ["i.AI <i-dot-ai-enquiries@cabinetoffice.gov.uk>"]
 license = "MIT"
 readme = "README.md"
+classifiers = [
+    "Operating System :: POSIX :: Linux"
+]
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.12"
@@ -49,6 +52,7 @@ python-dateutil = "^2.9.0.post0"
 markdown = "^3.6"
 pydantic-settings = "^2.2.1"
 torch = {version = "^2.2.2+cpu", source = "pytorch-cpu-src"}
+torchvision = {version = "^0.17.2+cpu", source = "pytorch-cpu-src"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.1.1"
@@ -89,7 +93,7 @@ lxml = {extras = ["html-clean"], version = "^5.2.1"}
 loguru = "^0.7.2"
 streamlit-feedback = "^0.1.3"
 html2markdown = "^0.1.7"
-unstructured = "^0.13.2"
+unstructured = {extras = ["all-docs"], version = "^0.13.2"}
 
 
 [[tool.poetry.source]]

@@ -1,8 +1,10 @@
 {
   "image": "python:3.11-buster",
-  "postCreateCommand": "pip3 install poetry && apt update && apt install libgl-dev libmagic-dev -y && chmod 777 data/elastic",
+  "postCreateCommand": "apt update && apt install libgl-dev libmagic-dev -y && chmod 777 data/elastic && poetry install",
   "name": "redbox-streamlit-dev",
   "features": {
+    "ghcr.io/devcontainers-contrib/features/poetry:2": {},
+    "ghcr.io/devcontainers-contrib/features/pre-commit:2": {},
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/jungaretti/features/make:1": {},
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
@@ -29,7 +31,8 @@
         "ms-python.python",
         "ms-python.vscode-pylance",
         "ms-azuretools.vscode-docker",
-        "github.vscode-github-actions"
+        "github.vscode-github-actions",
+        "ms-vscode.makefile-tools"
       ],
       "settings": {
         "workbench.editor.wrapTabs": true,
