@@ -20,7 +20,7 @@ We welcome contributions to this project. Please see the [CONTRIBUTING.md](./CON
 
 ## First time setup
 
-Clone to repo to your local machine.
+Clone the repo to your local machine.
 
 ### Dev container
 
@@ -33,6 +33,8 @@ pwd
 Copy this path.
 
 Build the container. When prompted, give the path you copied. See the [docker-outside-of-docker documentation](https://github.com/devcontainers/features/tree/main/src/docker-outside-of-docker) for information and troubleshooting.
+
+On some OSes, the container may not automatically share your GitHub SSH key with the host system. See [this answer on Stack Overflow](https://github.com/csci530-os/vscode-remote-devcontainer/issues/2#issuecomment-1251488797) to solve this.
 
 ### Environment variables
 
