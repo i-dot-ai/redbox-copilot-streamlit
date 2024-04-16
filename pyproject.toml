@@ -51,8 +51,6 @@ python-docx = "^1.1.0"
 python-dateutil = "^2.9.0.post0"
 markdown = "^3.6"
 pydantic-settings = "^2.2.1"
-torch = {version = "^2.2.2+cpu", source = "pytorch-cpu-src"}
-torchvision = {version = "^0.17.2+cpu", source = "pytorch-cpu-src"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.1.1"
@@ -86,6 +84,14 @@ anthropic = "^0.25.1"
 litellm = "^1.35.2"
 openai = "^1.17.0"
 sentence-transformers = "^2.6.0"
+torch = [
+  {version = "^2.2.2+cpu", source = "pytorch-cpu-src", platform = "linux"},
+  {version = "^2.2.2", platform = "darwin"}
+]
+torchvision = [
+  {version = "^0.17.2+cpu", source = "pytorch-cpu-src", platform = "linux"},
+  {version = "^0.17.2", platform = "darwin"}
+]
 
 [tool.poetry.group.streamlit-app.dependencies]
 streamlit = "^1.33.0"
