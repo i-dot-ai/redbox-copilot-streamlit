@@ -1,0 +1,3 @@
+[submodule "redbox-backend"]
+	path = redbox-backend
+	url = git@github.com:i-dot-ai/redbox-copilot.git

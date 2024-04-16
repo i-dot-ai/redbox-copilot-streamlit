@@ -1,10 +1,7 @@
+include:
+  - redbox-backend/docker-compose.yml
+
 services:
-  requirements:
-    image: python:3.11
-    profiles:
-      - utils
-    volumes:
-      - ./:/app/:z
   streamlit-app:
     image: redbox-streamlit-app:latest
     build:
@@ -27,50 +24,3 @@ services:
       - minio
     networks:
       - redbox-app-network
-  minio:
-    image: minio/minio
-    expose:
-      - "9000"
-      - "9001"
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    environment:
-      - MINIO_ACCESS_KEY=minioadmin
-      - MINIO_SECRET_KEY=minioadmin
-    command: server --console-address ":9001" /data
-    networks:
-      - redbox-app-network
-    volumes:
-      - ./data/objectstore:/data
-  elasticsearch:
-    image: elasticsearch:8.12.0
-    volumes:
-      - ./data/elastic/:/usr/share/elasticsearch/data:Z
-    ports:
-      - 9200:9200
-      - 9300:9300
-    environment:
-      # node.name: elasticsearch
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m
-      # ELASTIC__PASSWORD: ${ELASTIC__PASSWORD:-}
-      - bootstrap.memory_lock=true
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-      - xpack.security.enrollment.enabled=false
-      - cluster.routing.allocation.disk.threshold_enabled=false
-    networks:
-      - redbox-app-network
-    restart: unless-stopped
-
-networks:
-  redbox-app-network:
-    driver: bridge
-
-volumes:
-  elasticsearch:
-  redbox-app-data:
-  local_postgres_data: {}
-  redis:
-    driver: local
-  redis-insight:
