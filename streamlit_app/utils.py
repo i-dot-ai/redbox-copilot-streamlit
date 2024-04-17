@@ -307,7 +307,8 @@ def load_llm_handler(ENV, update=False) -> None:
         max_tokens=st.session_state.model_params["max_tokens"],
         temperature=st.session_state.model_params["temperature"],
         streaming=True,
-    )
+    )  # type: ignore[call-arg]
+    # A meta, private argument hasn't been typed properly in LangChain
 
     if "llm_handler" not in st.session_state or update:
         embedding_function = SentenceTransformerEmbeddings()
