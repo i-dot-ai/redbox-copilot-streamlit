@@ -8,6 +8,7 @@ from redbox.models.file import (
     File,
     FileStatus,
     ProcessingStatusEnum,
+    UploadFile,
 )
 from redbox.models.llm import (
     EmbeddingResponse,
@@ -33,6 +34,7 @@ __all__ = [
     "ContentType",
     "Feedback",
     "File",
+    "UploadFile",
     "FileStatus",
     "Spotlight",
     "SpotlightComplete",

@@ -3,7 +3,8 @@ from uuid import UUID
 
 import streamlit as st
 
-from redbox.models import Collection, ContentType, File
+from redbox.models import Collection, ContentType
+from redbox.models.file import UploadFile
 from redbox.parsing.file_chunker import FileChunker
 from streamlit_app.utils import init_session_state
 
@@ -71,67 +72,20 @@ if submitted and uploaded_files is not None:  # noqa: C901
         )
 
     for file_index, uploaded_file in enumerate(uploaded_files):
-        # ==================== UPLOAD ====================
         with st.spinner(f"Uploading {uploaded_file.name}"):
-            bytes_data = uploaded_file.getvalue()
-
             sanitised_name = uploaded_file.name
             sanitised_name = sanitised_name.replace("'", "_")
 
             file_type = pathlib.Path(sanitised_name).suffix
 
-            st.session_state.s3_client.put_object(
-                Bucket=st.session_state.BUCKET_NAME,
-                Body=bytes_data,
-                Key=sanitised_name,
-                Tagging=f"file_type={file_type}&user_uuid={st.session_state.user_uuid}",
-            )
-
-            authenticated_s3_url = st.session_state.s3_client.generate_presigned_url(
-                "get_object",
-                Params={"Bucket": st.session_state.BUCKET_NAME, "Key": sanitised_name},
-                ExpiresIn=3600,
-            )
-            # Strip off the query string (we don't need the keys)
-            simple_s3_url = authenticated_s3_url.split("?")[0]
-
-            file = File(
-                url=simple_s3_url,
+            file_to_upload = UploadFile(
                 content_type=ContentType(file_type),
-                name=sanitised_name,
+                filename=sanitised_name,
                 creator_user_uuid=UUID(st.session_state.user_uuid),
+                file=uploaded_file,
             )
 
-        # ==================== CHUNKING ====================
-
-        with st.spinner(f"Chunking **{file.name}**"):
-            try:
-                chunks = file_chunker.chunk_file(file=file)
-            except TypeError as err:
-                st.error(f"Failed to chunk {file.name}, error: {str(err)}")
-                st.write(file.model_dump())
-                continue
-
-        # ==================== SAVING ====================
-
-        with st.spinner(f"Saving **{file.name}**"):
-            try:
-                st.session_state.storage_handler.write_item(item=file)
-                st.session_state.storage_handler.write_items(items=chunks)
-            except Exception as e:
-                st.error(f"Failed to save {file.name} and or its chunks, error: {str(e)}")
-                continue
-
-        # ==================== INDEXING ====================
-
-        with st.spinner(f"Indexing **{file.name}**"):
-            try:
-                st.session_state.llm_handler.add_chunks_to_vector_store(chunks=chunks)
-            except Exception as e:
-                st.error(f"Failed to index {file.name}, error: {str(e)}")
-                st.write(len(chunks))
-                st.write(chunks)
-                continue
+            file = st.session_state.backend.add_file(file_to_upload)
 
         st.toast(body=f"{file.name} Complete")
 

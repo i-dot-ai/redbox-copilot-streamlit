@@ -30,6 +30,7 @@ from redbox.models.feedback import Feedback
 from redbox.models.file import File
 from redbox.models.persona import ChatPersona
 from redbox.storage import ElasticsearchStorageHandler
+from redbox.local import LocalBackendAdapter
 
 env = Settings()
 
@@ -134,9 +135,6 @@ def init_session_state() -> dict:
     if "model_db" not in st.session_state:
         st.session_state.model_db = SentenceTransformerDB(env.embedding_model)
 
-    if "model_db" not in st.session_state:
-        st.session_state.model_db = SentenceTransformerDB(env.embedding_model)
-
     if "embedding_model" not in st.session_state:
         st.session_state.embedding_model = st.session_state.model_db
 
@@ -196,6 +194,15 @@ def init_session_state() -> dict:
 
     else:
         _model_params = {"max_tokens": 4096, "temperature": 0.2}
+
+    if "backend" not in st.session_state:
+        st.session_state.backend = LocalBackendAdapter(settings=env)
+        st.session_state.backend._set_llm(
+            model=st.session_state.model_select,
+            max_tokens=st.session_state.model_params["max_tokens"],
+            temperature=st.session_state.model_params["temperature"],
+            user_uuid=st.session_state.user_uuid
+        )
 
     if "llm" not in st.session_state or "llm_handler" not in st.session_state:
         load_llm_handler(
