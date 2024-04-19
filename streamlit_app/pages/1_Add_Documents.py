@@ -1,11 +1,10 @@
 import pathlib
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import streamlit as st
 
-from redbox.models import Tag, ContentType, File
+from redbox.models import ContentType, File
 from redbox.models.file import UploadFile
-from redbox.parsing.file_chunker import FileChunker
 from streamlit_app.utils import init_session_state
 
 st.set_page_config(page_title="Redbox Copilot - Add Documents", page_icon="📮", layout="wide")
@@ -26,11 +25,7 @@ uploaded_files = st.file_uploader(
 new_tag_uuid = UUID("ffffffff-ffff-ffff-ffff-ffffffffffff")
 no_tag_uuid = UUID("00000000-0000-0000-0000-000000000000")
 tag_uuid_name_map_raw = {x.uuid: x.name for x in tags}
-tag_uuid_name_map = {
-    new_tag_uuid: "➕ New tag...",
-    no_tag_uuid: "No associated tag",
-    **tag_uuid_name_map_raw
-}
+tag_uuid_name_map = {new_tag_uuid: "➕ New tag...", no_tag_uuid: "No associated tag", **tag_uuid_name_map_raw}
 
 tag_selection = st.selectbox(
     "Add to tag:",
@@ -54,7 +49,7 @@ if submitted and uploaded_files is not None:  # noqa: C901
         elif new_tag in tag_uuid_name_map.values():
             st.error("Tag name already exists")
             st.stop()
-    
+
     files: list[File] = []
     for file_index, uploaded_file in enumerate(uploaded_files):
         with st.spinner(f"Uploading {uploaded_file.name}"):
@@ -80,7 +75,4 @@ if submitted and uploaded_files is not None:  # noqa: C901
         if tag_selection == new_tag_uuid:
             tag_selection = st.session_state.backend.create_tag(name=new_tag).uuid
 
-        st.session_state.backend.add_files_to_tag(
-            file_uuids=[file.uuid for file in files],
-            tag_uuid=tag_selection
-        )
+        st.session_state.backend.add_files_to_tag(file_uuids=[file.uuid for file in files], tag_uuid=tag_selection)

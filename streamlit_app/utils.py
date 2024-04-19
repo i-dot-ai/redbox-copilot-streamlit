@@ -201,7 +201,7 @@ def init_session_state() -> dict:
         st.session_state.backend._set_llm(
             model=st.session_state.model_select,
             max_tokens=st.session_state.model_params["max_tokens"],
-            temperature=st.session_state.model_params["temperature"]
+            temperature=st.session_state.model_params["temperature"],
         )
 
     if "llm" not in st.session_state or "llm_handler" not in st.session_state:

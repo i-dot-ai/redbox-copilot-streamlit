@@ -6,7 +6,6 @@ from pathlib import Path
 from langchain_community.chat_models import ChatLiteLLM
 from langchain_community.embeddings import SentenceTransformerEmbeddings
 from langchain.vectorstores.elasticsearch import ApproxRetrievalStrategy, ElasticsearchStore
-from sqlalchemy import ColumnElement
 
 from redbox.definitions import BackendAdapter
 from redbox.models.file import UploadFile, ContentType
@@ -28,7 +27,9 @@ class LocalBackendAdapter(BackendAdapter):
         # Storage
         self._es = self._settings.elasticsearch_client()
         self._storage_handler = ElasticsearchStorageHandler(es_client=self._es, root_index="redbox-data")
-        self._file_publisher = FileChunker(embedding_model=SentenceTransformerDB(self._settings.embedding_model, self._settings.embedding_model_path))
+        self._file_publisher = FileChunker(
+            embedding_model=SentenceTransformerDB(self._settings.embedding_model, self._settings.embedding_model_path)
+        )
         self._s3 = self._settings.s3_client()
 
         # LLM
@@ -77,7 +78,7 @@ class LocalBackendAdapter(BackendAdapter):
         log.info(f"uploading {file.uuid}")
 
         file_type = Path(file.filename).suffix
-        
+
         self._s3.put_object(
             Bucket=self._settings.bucket_name,
             Body=file.file,
@@ -124,13 +125,21 @@ class LocalBackendAdapter(BackendAdapter):
     def get_file(self, file_uuid: UUID) -> File:
         return self._storage_handler.read_item(file_uuid, model_type="File")
 
+    def list_files(self) -> Sequence[File]:
+        return self._storage_handler.read_all_items(model_type="File")
+
     def delete_file(self, file_uuid: UUID) -> File:
-        file = self._storage_handler.read_item(file_uuid, model_type="File")
+        file = self.get_file(file_uuid=file_uuid)
         chunks = self._storage_handler.get_file_chunks(file.uuid)
 
-        self._s3.delete_object(Bucket=self._settings.bucket_name, Key=file.key)
+        self._s3.delete_object(Bucket=self._settings.bucket_name, Key=file.name)
         self._storage_handler.delete_item(file)
         self._storage_handler.delete_items(chunks)
+
+        for tag in self.list_tags():
+            _ = self.remove_files_from_tag(file_uuids=[file.uuid], tag_uuid=tag.uuid)
+            if len(tag.files) == 0:
+                _ = self.delete_tag(tag_uuid=tag.uuid)
 
         return file
 
@@ -142,14 +151,12 @@ class LocalBackendAdapter(BackendAdapter):
     def get_file_status(self, file_uuid: UUID) -> FileStatus:
         status = self._storage_handler.get_file_status(file_uuid)
         return status
-    
+
     def list_tags(self) -> Sequence[Tag]:
         return self._storage_handler.read_all_items(model_type="Tag")
-    
+
     def get_tag(self, tag_uuid: UUID) -> Tag:
-        return self._storage_handler.read_item(
-            item_uuid=tag_uuid, model_type="Tag"
-        )
+        return self._storage_handler.read_item(item_uuid=tag_uuid, model_type="Tag")
 
     def add_files_to_tag(self, file_uuids: list[UUID], tag_uuid: UUID) -> Tag:
         tag = self.get_tag(tag_uuid=tag_uuid)
@@ -157,7 +164,7 @@ class LocalBackendAdapter(BackendAdapter):
         self._storage_handler.update_item(item=tag)
         return tag
 
-    def remove_file_from_tag(self, file_uuids: list[UUID], tag_uuid: UUID) -> Tag:
+    def remove_files_from_tag(self, file_uuids: list[UUID], tag_uuid: UUID) -> Tag:
         tag = self.get_tag(tag_uuid=tag_uuid)
         for file_uuid in file_uuids:
             tag.files.discard(file_uuid)
@@ -165,11 +172,7 @@ class LocalBackendAdapter(BackendAdapter):
         return tag
 
     def create_tag(self, name: str) -> Tag:
-        tag = Tag(
-            name=name,
-            files=set(),
-            creator_user_uuid=UUID(self._user_uuid)
-        )
+        tag = Tag(name=name, files=set(), creator_user_uuid=UUID(self._user_uuid))
         self._storage_handler.write_item(item=tag)
         return tag
 
