@@ -53,6 +53,7 @@ class Settings(BaseSettings):
 
     bucket_name: str = "redbox-storage-dev"
     embedding_model: str = "all-mpnet-base-v2"
+    embedding_model_path: str = "/app/models"
 
     embed_queue_name: str = "redbox-embedder-queue"
     ingest_queue_name: str = "redbox-ingester-queue"

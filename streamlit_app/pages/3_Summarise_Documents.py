@@ -117,32 +117,32 @@ if "submitted" not in st.session_state:
 # region ===== URL PARAM INJECTION =====
 url_params = st.query_params.to_dict()
 
-collections = st.session_state.storage_handler.read_all_items("Collection")
-collections_by_uuid_map = {x.uuid: x for x in collections}
-collection = None
+tags = st.session_state.storage_handler.read_all_items("Tag")
+tags_by_uuid_map = {x.uuid: x for x in tags}
+tag = None
 
 
 parsed_files = st.session_state.storage_handler.read_all_items("File")
 parsed_files_uuid_map = {x.uuid: x for x in parsed_files}
 
-collection_select = st.selectbox(
-    label="Collections",
-    options=collections_by_uuid_map.keys(),
+tag_select = st.selectbox(
+    label="Tags",
+    options=tags_by_uuid_map.keys(),
     index=None,
-    format_func=lambda x: collections_by_uuid_map[x].name,
+    format_func=lambda x: tags_by_uuid_map[x].name,
 )
 
-if collection_select is not None:
-    url_params["collection_title"] = str(collection_select)
+if tag_select is not None:
+    url_params["tag_title"] = str(tag_select)
 
 files_from_url = []
-if "collection_title" in url_params:
-    collection_title = url_params["collection_title"]
-    collection = st.session_state.storage_handler.read_item(
-        item_uuid=uuid.UUID(collection_title), model_type="Collection"
+if "tag_title" in url_params:
+    tag_title = url_params["tag_title"]
+    tag = st.session_state.storage_handler.read_item(
+        item_uuid=uuid.UUID(tag_title), model_type="Tag"
     )
 
-    files_from_url = [uuid.UUID(x) for x in collection.files]
+    files_from_url = [uuid.UUID(x) for x in tag.files]
     files_from_url = [x for x in files_from_url if x in parsed_files_uuid_map.keys()]
 
 spotlight_file_select = st.multiselect(
@@ -271,11 +271,11 @@ if st.session_state.submitted:
         return out
 
     def spotlight_to_docx():
-        if collection is not None:
+        if tag is not None:
             document = spotlight_complete_to_docx(
                 spotlight_complete=spotlight_completed_by_hash[SELECTED_FILE_HASH],
                 files=files,
-                title=collection.name,
+                title=tag.name,
             )
         elif len(files) == 1:
             sanitised_file_name = files[0].name.replace("_", " ").replace("-", " ")
@@ -301,8 +301,8 @@ if st.session_state.submitted:
         bytes_document.seek(0)
         return bytes_document
 
-    if collection is not None:
-        summary_file_name_root = f"{collection.name}_{datetime.datetime.now().isoformat()}_summary"
+    if tag is not None:
+        summary_file_name_root = f"{tag.name}_{datetime.datetime.now().isoformat()}_summary"
     else:
         summary_file_name_root = f"{datetime.datetime.now().isoformat()}_summary"
 

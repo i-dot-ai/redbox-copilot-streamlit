@@ -1,5 +1,5 @@
 from redbox.models.chat import ChatMessage
-from redbox.models.collection import Collection
+from redbox.models.tag import Tag
 from redbox.models.feedback import Feedback
 from redbox.models.file import (
     Chunk,
@@ -30,7 +30,7 @@ __all__ = [
     "ChatPersona",
     "Chunk",
     "ChunkStatus",
-    "Collection",
+    "Tag",
     "ContentType",
     "Feedback",
     "File",

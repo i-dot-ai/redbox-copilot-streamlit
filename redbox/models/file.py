@@ -1,6 +1,7 @@
 import hashlib
 from enum import Enum
-from typing import Optional, BinaryIO
+from typing import Optional
+from io import BytesIO
 from uuid import UUID
 
 import tiktoken
@@ -44,9 +45,12 @@ class ContentType(str, Enum):
 
 
 class UploadFile(PersistableModel):
+    class Config:
+        arbitrary_types_allowed = True
+
     filename: str
     content_type: ContentType = Field(description="content_type of file")
-    file: BinaryIO = Field(description="The file-like object")
+    file: BytesIO = Field(description="The file-like object")
 
 
 class File(PersistableModel):

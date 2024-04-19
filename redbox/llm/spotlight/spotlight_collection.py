@@ -7,7 +7,7 @@ from langchain.schema import HumanMessage, SystemMessage
 from redbox.llm.prompts.spotlight import SPOTLIGHT_COMBINATION_TASK_PROMPT
 
 
-class SpotlightCollection(object):
+class SpotlightTag(object):
     """A class for combining Spotlight task outputs into a cohesive briefing.
 
     Args:

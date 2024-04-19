@@ -80,17 +80,17 @@ if preview_file_button or "file_uuid" in url_params:
 
 if delete_file_button:
     file = st.session_state.file_uuid_map[file_select]
-    # Update Collection.files to remove all references to this file
-    collections = st.session_state.storage_handler.read_all_items("Collection")
-    for collection in collections:
-        if str(file.uuid) in collection.files:
-            collection.files.remove(str(file.uuid))
-            if len(collection.files) >= 1:
-                st.session_state.storage_handler.update_item(collection)
+    # Update Tag.files to remove all references to this file
+    tags = st.session_state.storage_handler.read_all_items("Tag")
+    for tag in tags:
+        if str(file.uuid) in tag.files:
+            tag.files.remove(str(file.uuid))
+            if len(tag.files) >= 1:
+                st.session_state.storage_handler.update_item(tag)
             else:
-                st.session_state.storage_handler.delete_item(collection)
+                st.session_state.storage_handler.delete_item(tag)
                 st.toast(
-                    f"Deleted collection {collection.name} as it was empty",
+                    f"Deleted tag {tag.name} as it was empty",
                     icon="🗑️",
                 )
 

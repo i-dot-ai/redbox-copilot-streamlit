@@ -133,7 +133,7 @@ def init_session_state() -> dict:
         st.session_state.available_personas = get_persona_names()
 
     if "model_db" not in st.session_state:
-        st.session_state.model_db = SentenceTransformerDB(env.embedding_model)
+        st.session_state.model_db = SentenceTransformerDB(env.embedding_model, env.embedding_model_path)
 
     if "embedding_model" not in st.session_state:
         st.session_state.embedding_model = st.session_state.model_db
@@ -197,11 +197,11 @@ def init_session_state() -> dict:
 
     if "backend" not in st.session_state:
         st.session_state.backend = LocalBackendAdapter(settings=env)
+        st.session_state.backend._set_uuid(user_uuid=st.session_state.user_uuid)
         st.session_state.backend._set_llm(
             model=st.session_state.model_select,
             max_tokens=st.session_state.model_params["max_tokens"],
-            temperature=st.session_state.model_params["temperature"],
-            user_uuid=st.session_state.user_uuid
+            temperature=st.session_state.model_params["temperature"]
         )
 
     if "llm" not in st.session_state or "llm_handler" not in st.session_state:
