@@ -1,5 +1,5 @@
 from uuid import UUID
-from typing import TextIO, Sequence
+from typing import TextIO, Sequence, Optional
 import logging
 from pathlib import Path
 
@@ -33,11 +33,11 @@ class LocalBackendAdapter(BackendAdapter):
         self._s3 = self._settings.s3_client()
 
         # LLM
-        self._llm: ChatLiteLLM
-        self._llm_handler: LLMHandler
+        self._llm: Optional[ChatLiteLLM] = None
+        self._llm_handler: Optional[LLMHandler] = None
 
         # User
-        self._user_uuid: UUID
+        self._user_uuid: Optional[UUID] = None
 
     def _set_uuid(self, user_uuid: UUID) -> None:
         self._user_uuid = user_uuid
@@ -74,6 +74,10 @@ class LocalBackendAdapter(BackendAdapter):
         return self._file_publisher.supported_file_types
 
     def add_file(self, file: UploadFile) -> File:
+        assert self._llm_handler is not None
+        assert self._llm is not None
+        assert self._user_uuid is not None
+
         # ==================== UPLOAD ====================
         log.info(f"uploading {file.uuid}")
 
@@ -126,7 +130,10 @@ class LocalBackendAdapter(BackendAdapter):
         return self._storage_handler.read_item(file_uuid, model_type="File")
 
     def list_files(self) -> Sequence[File]:
-        return self._storage_handler.read_all_items(model_type="File")
+        files = self._storage_handler.read_all_items(model_type="File")
+        assert all(isinstance(file, File) for file in files)
+
+        return files
 
     def delete_file(self, file_uuid: UUID) -> File:
         file = self.get_file(file_uuid=file_uuid)
@@ -153,7 +160,10 @@ class LocalBackendAdapter(BackendAdapter):
         return status
 
     def list_tags(self) -> Sequence[Tag]:
-        return self._storage_handler.read_all_items(model_type="Tag")
+        tags = self._storage_handler.read_all_items(model_type="Tag")
+        assert all(isinstance(tag, Tag) for tag in tags)
+
+        return tags
 
     def get_tag(self, tag_uuid: UUID) -> Tag:
         return self._storage_handler.read_item(item_uuid=tag_uuid, model_type="Tag")
@@ -172,7 +182,9 @@ class LocalBackendAdapter(BackendAdapter):
         return tag
 
     def create_tag(self, name: str) -> Tag:
-        tag = Tag(name=name, files=set(), creator_user_uuid=UUID(self._user_uuid))
+        assert self._user_uuid is not None
+
+        tag = Tag(name=name, files=set(), creator_user_uuid=self._user_uuid)
         self._storage_handler.write_item(item=tag)
         return tag
 
