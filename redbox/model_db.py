@@ -1,5 +1,4 @@
 import logging
-import os
 from uuid import uuid4
 
 from sentence_transformers import SentenceTransformer
@@ -7,15 +6,13 @@ from sentence_transformers import SentenceTransformer
 from redbox.models import ModelInfo
 from redbox.models.llm import Embedding, EmbeddingResponse
 
-MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "models")
-
 log = logging.getLogger()
 log.setLevel(logging.INFO)
 
 
 class SentenceTransformerDB(SentenceTransformer):
-    def __init__(self, model_name: str):
-        super().__init__(model_name, cache_folder=MODEL_PATH)
+    def __init__(self, model_name: str, cache_folder: str):
+        super().__init__(model_name_or_path=model_name, cache_folder=cache_folder)
         self.model_name = model_name
 
     def embed_sentences(self, sentences: list[str]) -> EmbeddingResponse:

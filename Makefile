@@ -21,7 +21,7 @@ clean:
 
 ## Lint the codebase
 lint:
-	poetry run ruff check .
+	poetry run ruff check . --fix
 
 ## Format the codebase
 format:

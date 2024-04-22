@@ -1,6 +1,7 @@
 import hashlib
 from enum import Enum
 from typing import Optional
+from io import BytesIO
 from uuid import UUID
 
 import tiktoken
@@ -41,6 +42,15 @@ class ContentType(str, Enum):
     PPTX = ".pptx"
     TSV = ".tsv"
     XLSX = ".xlsx"
+
+
+class UploadFile(PersistableModel):
+    class Config:
+        arbitrary_types_allowed = True
+
+    filename: str
+    content_type: ContentType = Field(description="content_type of file")
+    file: BytesIO = Field(description="The file-like object")
 
 
 class File(PersistableModel):

@@ -10,43 +10,36 @@ ENV = init_session_state()
 file_preview = FilePreview()
 
 
-st.title("Preview Files")
-
-st.session_state["files"] = []
-st.session_state["file_uuid_map"] = {}
-st.session_state["file_uuid_to_name_map"] = {}
+if "file_uuid_to_name_map" not in st.session_state:
+    st.session_state["file_uuid_to_name_map"] = {}
 
 
 def refresh_files():
-    st.session_state["files"] = st.session_state.storage_handler.read_all_items(model_type="File")
-    st.session_state["file_uuid_map"] = {x.uuid: x for x in st.session_state["files"]}
-    st.session_state["file_uuid_to_name_map"] = {x.uuid: x.name for x in st.session_state["files"]}
-
-
-refresh_files()
-url_params = st.query_params.to_dict()
+    st.session_state["file_uuid_to_name_map"] = {x.uuid: x.name for x in st.session_state.backend.list_files()}
 
 
 def clear_params():
     st.query_params.clear()
 
 
+st.title("Preview Files")
+
+refresh_files()
+url_params = st.query_params.to_dict()
+
+
+select_index = 0
 if "file_uuid" in url_params:
-    file_uuid_string_list = [str(file_uuid) for file_uuid in st.session_state.file_uuid_to_name_map.keys()]
-    file_select = st.selectbox(
-        label="File",
-        options=file_uuid_string_list,
-        index=file_uuid_string_list.index(url_params["file_uuid"]),
-        on_change=clear_params,
-        format_func=lambda x: st.session_state.file_uuid_to_name_map[uuid.UUID(x)],
-    )
-else:
-    file_select = st.selectbox(
-        label="File",
-        index=0,
-        options=list(st.session_state.file_uuid_to_name_map.keys()),
-        format_func=lambda x: st.session_state.file_uuid_to_name_map[x],
-    )
+    select_index = st.session_state.file_uuid_to_name_map.keys().index(uuid.UUID(url_params["file_uuid"]))
+
+file_select = st.selectbox(
+    label="File",
+    options=st.session_state.file_uuid_to_name_map.keys(),
+    index=select_index,
+    format_func=lambda x: st.session_state.file_uuid_to_name_map[x],
+    on_change=clear_params,
+)
+
 col1, col2 = st.columns(2)
 with col1:
     preview_file_button = st.button("🔍 Preview File")
@@ -54,7 +47,7 @@ with col2:
     delete_file_button = st.button("🗑️ Delete File")
 
 if preview_file_button or "file_uuid" in url_params:
-    file = st.session_state.file_uuid_map[uuid.UUID(file_select)]
+    file = st.session_state.backend.get_file(file_uuid=file_select)
 
     with st.expander("File Metadata"):
         st.markdown(f"**Name:** `{file.name}`")
@@ -79,26 +72,7 @@ if preview_file_button or "file_uuid" in url_params:
         st.warning(f"File rendering not yet supported for {file.content_type}")
 
 if delete_file_button:
-    file = st.session_state.file_uuid_map[file_select]
-    # Update Collection.files to remove all references to this file
-    collections = st.session_state.storage_handler.read_all_items("Collection")
-    for collection in collections:
-        if str(file.uuid) in collection.files:
-            collection.files.remove(str(file.uuid))
-            if len(collection.files) >= 1:
-                st.session_state.storage_handler.update_item(collection)
-            else:
-                st.session_state.storage_handler.delete_item(collection)
-                st.toast(
-                    f"Deleted collection {collection.name} as it was empty",
-                    icon="🗑️",
-                )
-
-    # Delete the file from Uploads
-    st.session_state.s3_client.delete_object(Bucket=st.session_state.BUCKET_NAME, Key=file.name)
-
-    # Delete the file from the DB
-    st.session_state.storage_handler.delete_item(file)
+    file = st.session_state.backend.delete_file(file_uuid=file_select)
 
     st.toast(f"Deleted file {file.name}", icon="🗑️")
 
