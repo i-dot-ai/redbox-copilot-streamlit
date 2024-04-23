@@ -1,6 +1,7 @@
 import json
 from datetime import date
-from typing import Any, Optional
+from typing import Any, Iterable, Optional
+from uuid import UUID
 
 from langchain.chains import MapReduceDocumentsChain, ReduceDocumentsChain
 from langchain.chains.combine_documents.base import BaseCombineDocumentsChain
@@ -12,21 +13,27 @@ from langchain_community.embeddings import (
     HuggingFaceEmbeddings,
     SentenceTransformerEmbeddings,
 )
+from langchain_core.chat_history import BaseChatMessageHistory
+from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_community.chat_message_histories import ChatMessageHistory
+
 
 from redbox.llm.prompts.chat import (
     CONDENSE_QUESTION_PROMPT,
     STUFF_DOCUMENT_PROMPT,
     WITH_SOURCES_PROMPT,
 )
-from redbox.llm.prompts.spotlight import SPOTLIGHT_COMBINATION_TASK_PROMPT
-from redbox.llm.spotlight.spotlight import (
+from redbox.llm.prompts.summary import SUMMARY_COMBINATION_TASK_PROMPT
+from redbox.llm.summary.summary import (
     key_actions_task,
     key_discussion_task,
     key_people_task,
     summary_task,
 )
+from redbox.models.chat import ChatMessage
 from redbox.models.file import Chunk, File
-from redbox.models.spotlight import Spotlight, SpotlightTask
+from redbox.models.summary import Summary, SummaryTask
+from redbox.llm.prompts.chat import get_chat_runnable
 
 
 class LLMHandler(object):
@@ -57,7 +64,11 @@ class LLMHandler(object):
 
         self.vector_store = vector_store
 
-        self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+        self.memory: dict = {}
+        self._chat_runnable: RunnableWithMessageHistory = get_chat_runnable(
+            llm=self.llm,
+            get_history_func=self.get_chat,
+        )
 
     def _create_embedding_function(self) -> SentenceTransformerEmbeddings:
         """Initialises our vectorisation method.
@@ -103,6 +114,22 @@ class LLMHandler(object):
                 metadatas=[meta for meta in sanitised_metadatas[i : i + batch_size]],
                 ids=[chunk.uuid for chunk in chunks[i : i + batch_size]],
             )
+
+    def get_chat(self, chat_uuid: UUID) -> BaseChatMessageHistory:
+        if chat_uuid not in self.memory:
+            self.memory[chat_uuid] = ChatMessageHistory()
+
+        return self.memory[chat_uuid]
+
+    def chat(self, input: str, chat_uuid: UUID) -> str:
+        return self._chat_runnable.invoke(
+            {"input": input, "uuid": chat_uuid}, config={"configurable": {"session_id": chat_uuid}}
+        )
+
+    def schat(self, input: str, chat_uuid: UUID) -> Iterable:
+        return self._chat_runnable.stream(
+            {"input": input, "uuid": chat_uuid}, config={"configurable": {"session_id": chat_uuid}}
+        )
 
     def chat_with_rag(
         self,
@@ -160,8 +187,8 @@ class LLMHandler(object):
         )
         return result, docs_with_sources_chain
 
-    def get_spotlight_tasks(self, files: list[File], file_hash: str) -> Spotlight:
-        spotlight = Spotlight(
+    def get_summary_tasks(self, files: list[File], file_hash: str) -> Summary:
+        summary = Summary(
             files=files,
             file_hash=file_hash,
             tasks=[
@@ -171,12 +198,12 @@ class LLMHandler(object):
                 key_people_task,
             ],
         )
-        return spotlight
+        return summary
 
-    def run_spotlight_task(
+    def run_summary_task(
         self,
-        spotlight: Spotlight,
-        task: SpotlightTask,
+        summary: Summary,
+        task: SummaryTask,
         user_info: dict,
         callbacks: Optional[list] = None,
         map_reduce: bool = False,
@@ -185,7 +212,7 @@ class LLMHandler(object):
         map_chain = LLMChain(llm=self.llm, prompt=task.prompt_template)  # type: ignore
         regular_chain = StuffDocumentsChain(llm_chain=map_chain, document_variable_name="text")
 
-        reduce_chain = LLMChain(llm=self.llm, prompt=SPOTLIGHT_COMBINATION_TASK_PROMPT)
+        reduce_chain = LLMChain(llm=self.llm, prompt=SUMMARY_COMBINATION_TASK_PROMPT)
         combine_documents_chain = StuffDocumentsChain(llm_chain=reduce_chain, document_variable_name="text")
         reduce_documents_chain = ReduceDocumentsChain(
             combine_documents_chain=combine_documents_chain,
@@ -203,7 +230,7 @@ class LLMHandler(object):
             result = map_reduce_chain.run(
                 user_info=user_info,
                 current_date=date.today().isoformat(),
-                input_documents=spotlight.to_documents(),
+                input_documents=summary.to_documents(),
                 callbacks=callbacks or [],
             )
             return result, map_reduce_chain
@@ -211,7 +238,7 @@ class LLMHandler(object):
             result = regular_chain.run(
                 user_info=user_info,
                 current_date=date.today().isoformat(),
-                input_documents=spotlight.to_documents(),
+                input_documents=summary.to_documents(),
                 callbacks=callbacks or [],
             )
 

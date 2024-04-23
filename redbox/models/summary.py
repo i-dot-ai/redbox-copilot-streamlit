@@ -9,7 +9,7 @@ from redbox.models.base import PersistableModel
 from redbox.models.file import File
 
 
-class SpotlightTask(PersistableModel):
+class SummaryTask(PersistableModel):
     id: str
     title: str
     # langchain.prompts.PromptTemplate needs pydantic v1, breaks
@@ -27,7 +27,7 @@ class SpotlightTask(PersistableModel):
             return prompt_template
 
 
-class SpotlightTaskComplete(PersistableModel):
+class SummaryTaskComplete(PersistableModel):
     id: str
     title: str
     # langchain.chains.base.Chain needs pydantic v1, breaks
@@ -45,16 +45,16 @@ class SpotlightTaskComplete(PersistableModel):
             return chain
 
 
-class Spotlight(PersistableModel):
+class Summary(PersistableModel):
     files: list[File]
     file_hash: str
-    tasks: list[SpotlightTask]
+    tasks: list[SummaryTask]
 
     def to_documents(self) -> list[Document]:
         return [file.to_document() for file in self.files]
 
 
-class SpotlightComplete(PersistableModel):
+class SummaryComplete(PersistableModel):
     file_hash: str
     file_uuids: list[str]
-    tasks: list[SpotlightTaskComplete]
+    tasks: list[SummaryTaskComplete]

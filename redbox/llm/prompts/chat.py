@@ -1,6 +1,7 @@
 from langchain.prompts.prompt import PromptTemplate
-
+import logging
 from redbox.llm.prompts.core import _core_redbox_prompt
+from redbox.models.chat import ChatMessage
 
 _chat_template = """Given the following conversation and a follow up question,
 rephrase the follow up question to be a standalone question, in its original
@@ -42,3 +43,44 @@ WITH_SOURCES_PROMPT = PromptTemplate.from_template(_core_redbox_prompt + _with_s
 _stuff_document_template = "<Doc{parent_doc_uuid}>{page_content}</Doc{parent_doc_uuid}>"
 
 STUFF_DOCUMENT_PROMPT = PromptTemplate.from_template(_stuff_document_template)
+
+from typing import Callable, Optional
+from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_community.chat_models import ChatLiteLLM
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger()
+
+
+def get_chat_runnable(
+    llm: ChatLiteLLM,
+    get_history_func: Callable,
+    init_messages: Optional[list[ChatMessage]] = None,
+) -> RunnableWithMessageHistory:
+    if init_messages is None:
+        chat_prompt = ChatPromptTemplate.from_messages(
+            [
+                MessagesPlaceholder(variable_name="history"),
+                ("human", "{input}"),
+            ]
+        )
+    else:
+        chat_prompt = ChatPromptTemplate.from_messages(
+            [
+                *((msg["role"], msg["text"]) for msg in init_messages),
+                MessagesPlaceholder(variable_name="history"),
+                ("human", "{input}"),
+            ]
+        )
+
+    runnable = chat_prompt | llm
+
+    with_message_history = RunnableWithMessageHistory(
+        runnable,
+        get_history_func,
+        input_messages_key="input",
+        history_messages_key="history",
+    )
+
+    return with_message_history

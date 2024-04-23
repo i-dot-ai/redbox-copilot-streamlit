@@ -6,63 +6,27 @@ from datetime import datetime
 from io import BytesIO
 from typing import Optional
 
-import boto3
 import dotenv
 import html2markdown
 import pandas as pd
 import streamlit as st
-from botocore.client import ClientError
-from elasticsearch import Elasticsearch
 from langchain.callbacks import FileCallbackHandler
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains.base import Chain
 from langchain.schema.output import LLMResult
-from langchain.vectorstores.elasticsearch import ApproxRetrievalStrategy, ElasticsearchStore
-from langchain_community.chat_models import ChatLiteLLM
-from langchain_community.embeddings import SentenceTransformerEmbeddings
 from loguru import logger
 from lxml.html.clean import Cleaner
 
-from redbox.llm.llm_base import LLMHandler
-from redbox.model_db import SentenceTransformerDB
 from redbox.models import Settings
 from redbox.models.feedback import Feedback
 from redbox.models.file import File
 from redbox.models.persona import ChatPersona
-from redbox.storage import ElasticsearchStorageHandler
 from redbox.local import LocalBackendAdapter
+
 
 env = Settings()
 
 DEV_UUID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
-
-
-def get_user_name(principal: dict) -> str:
-    """Get the user name from the principal object
-
-    Args:
-        principal (dict): the principal object
-
-    Returns:
-        str: the user name
-
-    """
-    for obj in principal["claims"]:
-        if obj["typ"] == "name":
-            return obj["val"]
-    return ""
-
-
-def populate_user_info() -> dict:
-    """Populate the user information
-
-    Args:
-        ENV (dict): the environment variables dictionary
-
-    Returns:
-        dict: the user information dictionary
-    """
-    return {"name": DEV_UUID, "email": "dev@example.com"}
 
 
 def init_session_state() -> dict:
@@ -94,23 +58,6 @@ def init_session_state() -> dict:
         unsafe_allow_html=True,
     )
 
-    if "user_details" not in st.session_state:
-        st.session_state["user_details"] = populate_user_info()
-
-    if "user_uuid" not in st.session_state:
-        st.session_state.user_uuid = st.session_state["user_details"]["name"]
-
-    if "s3_client" not in st.session_state:
-        if ENV["OBJECT_STORE"] == "minio":
-            st.session_state.s3_client = boto3.client(
-                "s3",
-                endpoint_url=f"http://{ENV['MINIO_HOST']}:9000",
-                aws_access_key_id=ENV["MINIO_ACCESS_KEY"],
-                aws_secret_access_key=ENV["MINIO_SECRET_KEY"],
-            )
-        elif ENV["OBJECT_STORE"] == "s3":
-            raise NotImplementedError("S3 not yet implemented")
-
     if "available_models" not in st.session_state:
         st.session_state.available_models = []
 
@@ -132,40 +79,7 @@ def init_session_state() -> dict:
     if "available_personas" not in st.session_state:
         st.session_state.available_personas = get_persona_names()
 
-    if "model_db" not in st.session_state:
-        st.session_state.model_db = SentenceTransformerDB(env.embedding_model, env.embedding_model_path)
-
-    if "embedding_model" not in st.session_state:
-        st.session_state.embedding_model = st.session_state.model_db
-
-    if "BUCKET_NAME" not in st.session_state:
-        st.session_state.BUCKET_NAME = ENV["BUCKET_NAME"]
-
-        try:
-            st.session_state.s3_client.head_bucket(Bucket=st.session_state.BUCKET_NAME)
-        except ClientError as err:
-            # The bucket does not exist or you have no access.
-            if err.response["Error"]["Code"] == "404":
-                print("The bucket does not exist.")
-                st.session_state.s3_client.create_bucket(Bucket=st.session_state.BUCKET_NAME)
-                print("Bucket created successfully.")
-            else:
-                raise err
-
-    if "storage_handler" not in st.session_state:
-        es = Elasticsearch(
-            hosts=[
-                {
-                    "host": ENV["ELASTIC__HOST"],
-                    "port": int(ENV["ELASTIC__PORT"]),
-                    "scheme": ENV["ELASTIC__SCHEME"],
-                }
-            ],
-            basic_auth=(ENV["ELASTIC__USER"], ENV["ELASTIC__PASSWORD"]),
-        )
-        st.session_state.storage_handler = ElasticsearchStorageHandler(es_client=es, root_index="redbox-data")
-
-    if st.session_state.user_uuid == DEV_UUID:
+    if ENV["DEV_MODE"]:
         st.sidebar.info("**DEV MODE**")
         with st.sidebar.expander("⚙️ DEV Settings", expanded=False):
             st.session_state.model_params = {
@@ -187,27 +101,35 @@ def init_session_state() -> dict:
             }
             reload_llm = st.button(label="♻️ Reload LLM and LLMHandler")
             if reload_llm:
-                load_llm_handler(ENV=ENV)
+                st.session_state.backend.set_llm(
+                    model=st.session_state.model_select,
+                    max_tokens=st.session_state.model_params["max_tokens"],
+                    temperature=st.session_state.model_params["temperature"],
+                )
 
             if st.button(label="Empty Streamlit Cache"):
                 st.cache_data.clear()
 
     else:
-        _model_params = {"max_tokens": 4096, "temperature": 0.2}
+        st.session_state.model_params = {"max_tokens": 4096, "temperature": 0.2}
 
     if "backend" not in st.session_state:
         st.session_state.backend = LocalBackendAdapter(settings=env)
-        st.session_state.backend._set_uuid(user_uuid=st.session_state.user_uuid)
-        st.session_state.backend._set_llm(
-            model=st.session_state.model_select,
-            max_tokens=st.session_state.model_params["max_tokens"],
-            temperature=st.session_state.model_params["temperature"],
-        )
 
-    if "llm" not in st.session_state or "llm_handler" not in st.session_state:
-        load_llm_handler(
-            ENV=ENV,
-        )
+        if not all(st.session_state.backend.status().values()):
+            st.session_state.backend.set_user(
+                name="Foo Bar",
+                email="foo@bar.baz",
+                uuid=DEV_UUID,
+                department="Cabinet Office",
+                role="Civil Servant",
+                preferred_language="British English",
+            )
+            st.session_state.backend.set_llm(
+                model=st.session_state.model_select,
+                max_tokens=st.session_state.model_params["max_tokens"],
+                temperature=st.session_state.model_params["temperature"],
+            )
 
     # check we have all expected data folders
 
@@ -219,17 +141,8 @@ def init_session_state() -> dict:
         logger.add(logfile, colorize=True, enqueue=True)
         st.session_state.llm_logger_callback = FileCallbackHandler(logfile)
 
-    if "user_info" not in st.session_state:
-        st.session_state.user_info = {
-            "name": "",
-            "email": "",
-            "department": "Cabinet Office",
-            "role": "Civil Servant",
-            "preffered_language": "British English",
-        }
-
-    if "spotlight" not in st.session_state:
-        st.session_state.spotlight = []
+    if "summary" not in st.session_state:
+        st.session_state.summary = []
 
     if "summary_of_summaries_mode" not in st.session_state:
         st.session_state.summary_of_summaries_mode = False
@@ -285,59 +198,6 @@ def get_file_link(file: File, page: Optional[int] = None) -> str:
     )
 
     return link_html
-
-
-def get_bedrock_client(ENV):
-    """Returns a bedrock client
-
-    Args:
-        ENV (_type_): the environment variables dictionary
-
-    Returns:
-        _type_:
-    """
-    bedrock_client = boto3.client("bedrock-runtime", region_name=ENV["REGION"])
-    return bedrock_client
-
-
-def load_llm_handler(ENV, update=False) -> None:
-    """Loads the LLM and LLMHandler into the session state
-
-    Args:
-        ENV (_type_): the environment variables dictionary
-        model_params (_type_): the model parameters
-
-    """
-
-    st.session_state.llm = ChatLiteLLM(
-        model=st.session_state.model_select,
-        max_tokens=st.session_state.model_params["max_tokens"],
-        temperature=st.session_state.model_params["temperature"],
-        streaming=True,
-    )  # type: ignore[call-arg]
-    # A meta, private argument hasn't been typed properly in LangChain
-
-    if "llm_handler" not in st.session_state or update:
-        embedding_function = SentenceTransformerEmbeddings()
-
-        hybrid = False
-        if ENV["ELASTIC__SUBSCRIPTION_LEVEL"].lower() in ("platinum", "enterprise"):
-            hybrid = True
-
-        vector_store = ElasticsearchStore(
-            es_url=f"{ENV['ELASTIC__SCHEME']}://{ENV['ELASTIC__HOST']}:{ENV['ELASTIC__PORT']}",
-            es_user=ENV["ELASTIC__USER"],
-            es_password=ENV["ELASTIC__PASSWORD"],
-            index_name="redbox-vector",
-            embedding=embedding_function,
-            strategy=ApproxRetrievalStrategy(hybrid=hybrid),
-        )
-
-        st.session_state.llm_handler = LLMHandler(
-            llm=st.session_state.llm,
-            user_uuid=st.session_state.user_uuid,
-            vector_store=vector_store,
-        )
 
 
 def hash_list_of_files(list_of_files: list[File]) -> str:
@@ -587,8 +447,3 @@ def get_persona_prompt(persona_name) -> str | None:
         persona_name (str): Persona name selected by user.
     """
     return next(chat_persona.prompt for chat_persona in chat_personas if chat_persona.name == persona_name)
-
-
-def get_files_by_uuid(file_uuids: list[uuid.UUID]) -> list[File]:
-    files = st.session_state.storage_handler.read_items(file_uuids, "File")
-    return files
