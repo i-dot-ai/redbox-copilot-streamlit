@@ -1,4 +1,4 @@
-from sentence_transformers import SentenceTransformer
+from langchain_core.embeddings.embeddings import Embeddings
 
 from redbox.models.file import Chunk, ContentType, File
 from redbox.parsing.chunk_clustering import cluster_chunks
@@ -8,7 +8,7 @@ from redbox.parsing.chunkers import other_chunker
 class FileChunker:
     """A class to wrap unstructured and generate compliant chunks from files"""
 
-    def __init__(self, embedding_model: SentenceTransformer = None):
+    def __init__(self, embedding_model: Embeddings = None):
         self.supported_file_types = [content_type.value for content_type in ContentType]
         self.embedding_model = embedding_model
 

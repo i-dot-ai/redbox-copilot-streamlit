@@ -60,7 +60,7 @@ if submitted and uploaded_files is not None:  # noqa: C901
             file_to_upload = UploadFile(
                 content_type=ContentType(file_type),
                 filename=sanitised_name,
-                creator_user_uuid=UUID(st.session_state.user_uuid),
+                creator_user_uuid=st.session_state.backend.get_user().uuid,
                 file=uploaded_file,
             )
 

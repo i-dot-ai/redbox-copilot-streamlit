@@ -21,3 +21,6 @@ class PersistableModel(BaseModel):
         if isinstance(v, str):
             return UUID(v)
         return v
+
+    def __hash__(self):
+        return hash((type(self),) + tuple(self.__dict__.values()))

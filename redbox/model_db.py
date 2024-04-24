@@ -6,7 +6,7 @@ from sentence_transformers import SentenceTransformer
 from redbox.models import ModelInfo
 from redbox.models.llm import Embedding, EmbeddingResponse
 
-log = logging.getLogger()
+log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 

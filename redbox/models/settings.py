@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     object_store: str = "minio"
 
     bucket_name: str = "redbox-storage-dev"
-    embedding_model: str = "all-mpnet-base-v2"
+    embedding_model: str = "sentence-transformers/all-mpnet-base-v2"
     sentence_transformers_home: str = "/app/models"
 
     embed_queue_name: str = "redbox-embedder-queue"

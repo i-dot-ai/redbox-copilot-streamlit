@@ -4,7 +4,8 @@ import os
 import uuid
 from datetime import datetime
 from io import BytesIO
-from typing import Optional
+from typing import Optional, Generator
+import json
 
 import dotenv
 import html2markdown
@@ -14,9 +15,11 @@ from langchain.callbacks import FileCallbackHandler
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains.base import Chain
 from langchain.schema.output import LLMResult
+from langchain_core.documents.base import Document
 from loguru import logger
 from lxml.html.clean import Cleaner
 
+from redbox.definitions import BackendAdapter
 from redbox.models import Settings
 from redbox.models.feedback import Feedback
 from redbox.models.file import File
@@ -237,9 +240,10 @@ class StreamlitStreamHandler(BaseCallbackHandler):
 class FilePreview(object):
     """Class for rendering files to streamlit UI"""
 
-    def __init__(self):
+    def __init__(self, backend: BackendAdapter):
         self.cleaner = Cleaner()
         self.cleaner.javascript = True
+        self.backend = backend
 
         self.render_methods = {
             ".pdf": self._render_pdf,
@@ -259,13 +263,12 @@ class FilePreview(object):
         """
 
         render_method = self.render_methods[file.content_type]
-        stream = st.session_state.s3_client.get_object(Bucket=st.session_state.BUCKET_NAME, Key=file.name)
-        file_bytes = stream["Body"].read()
+        file_bytes = self.backend.get_object(file_uuid=file.uuid)
         render_method(file, file_bytes)
 
     def _render_pdf(self, file: File, page_number: Optional[int] = None) -> None:
-        stream = st.session_state.s3_client.get_object(Bucket=st.session_state.BUCKET_NAME, Key=file.name)
-        base64_pdf = base64.b64encode(stream["Body"].read()).decode("utf-8")
+        file_bytes = self.backend.get_object(file_uuid=file.uuid)
+        base64_pdf = base64.b64encode(file_bytes).decode("utf-8")
 
         if page_number is not None:
             iframe = f"""<iframe
@@ -377,6 +380,7 @@ def submit_feedback(
     feedback: dict,
     input: str | list[str],
     output: str,
+    sources: list,
     creator_user_uuid: str,
     chain: Optional[Chain] = None,
 ) -> None:
@@ -386,19 +390,22 @@ def submit_feedback(
         feedback (Dict): A dictionary containing the feedback
         input (Union[str, List[str]]): Input text from the user
         output (str): The output text from the LLM
+        sources (list): The sources that were used
         creator_user_uuid (str): The uuid of the user who created the feedback
         chain (Optional[Chain], optional): The chain used to generate the output. Defaults to None.
     """
-    to_write = Feedback(
+    feedback = Feedback(
         input=input,
         chain=chain,
         output=output,
+        sources=sources,
         feedback_type=feedback["type"],
         feedback_score=feedback["score"],
         feedback_text=feedback["text"],
-        creator_user_uuid=uuid.UUID(creator_user_uuid),
+        creator_user_uuid=creator_user_uuid,
     )
-    st.session_state.storage_handler.write_item(to_write)
+
+    st.session_state.backend.create_feedback(feedback=feedback)
 
     st.toast("Thanks for your feedback!", icon="🙏")
 
@@ -447,3 +454,32 @@ def get_persona_prompt(persona_name) -> str | None:
         persona_name (str): Persona name selected by user.
     """
     return next(chat_persona.prompt for chat_persona in chat_personas if chat_persona.name == persona_name)
+
+
+def get_stream_key(stream: Generator, key: str) -> Generator:
+    """Allows generators of dicts output by LCEL to be used with st.write_stream."""
+    for i in stream:
+        res = i.get(key)
+        if res is not None:
+            yield res
+
+
+def render_document_citations(documents: list[Document]) -> str:
+    """Takes a list of documents and returns HTML links to them."""
+    cited: set[tuple[File, Optional[list[int]]]] = set()
+    for doc in documents:
+        file = st.session_state.backend.get_file(uuid.UUID(doc.metadata["parent_doc_uuid"]))
+
+        page_numbers = None
+        if "page_numbers" in doc.metadata:
+            page_numbers = tuple(json.loads(doc.metadata["page_numbers"]))
+
+        if page_numbers is None:
+            url = get_file_link(file=file)
+            cited.update([(file, page_numbers, url)])
+        else:
+            for page in page_numbers:
+                url = get_file_link(file=file, page=page)
+                cited.update([(file, page_numbers, url)])
+
+    return "\n".join([citation[2] for citation in cited])
