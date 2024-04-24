@@ -1,32 +1,35 @@
 import json
 from datetime import date
-from typing import Any, Optional
+from typing import Any, Iterable, Optional
+from uuid import UUID
 
 from langchain.chains import MapReduceDocumentsChain, ReduceDocumentsChain
 from langchain.chains.combine_documents.base import BaseCombineDocumentsChain
 from langchain.chains.combine_documents.stuff import StuffDocumentsChain
 from langchain.chains.llm import LLMChain
 from langchain.chains.qa_with_sources import load_qa_with_sources_chain
-from langchain.memory import ConversationBufferMemory
-from langchain_community.embeddings import (
-    HuggingFaceEmbeddings,
-    SentenceTransformerEmbeddings,
-)
+from langchain_core.chat_history import BaseChatMessageHistory
+from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain_core.vectorstores import VectorStore
+
 
 from redbox.llm.prompts.chat import (
     CONDENSE_QUESTION_PROMPT,
     STUFF_DOCUMENT_PROMPT,
     WITH_SOURCES_PROMPT,
 )
-from redbox.llm.prompts.spotlight import SPOTLIGHT_COMBINATION_TASK_PROMPT
-from redbox.llm.spotlight.spotlight import (
+from redbox.llm.prompts.summary import SUMMARY_COMBINATION_TASK_PROMPT
+from redbox.llm.summary.summary import (
     key_actions_task,
     key_discussion_task,
     key_people_task,
     summary_task,
 )
 from redbox.models.file import Chunk, File
-from redbox.models.spotlight import Spotlight, SpotlightTask
+from redbox.models.summary import Summary, SummaryTask
+from redbox.llm.prompts.chat import get_chat_runnable, get_rag_runnable
+from langchain_community.chat_models import ChatLiteLLM
 
 
 class LLMHandler(object):
@@ -34,10 +37,8 @@ class LLMHandler(object):
 
     def __init__(
         self,
-        llm,
-        user_uuid: str,
-        vector_store=None,
-        embedding_function: Optional[HuggingFaceEmbeddings] = None,
+        llm: ChatLiteLLM,
+        vector_store: VectorStore,
     ):
         """Initialise LLMHandler
 
@@ -50,22 +51,20 @@ class LLMHandler(object):
             _description_. Defaults to None.
         """
 
-        self.llm = llm
-        self.user_uuid = user_uuid
+        self._llm = llm
+        self._vector_store = vector_store
+        self._retriever = self._vector_store.as_retriever()
 
-        self.embedding_function = embedding_function or self._create_embedding_function()
-
-        self.vector_store = vector_store
-
-        self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-
-    def _create_embedding_function(self) -> SentenceTransformerEmbeddings:
-        """Initialises our vectorisation method.
-
-        Returns:
-            SentenceTransformerEmbeddings: object to run text embedding
-        """
-        return SentenceTransformerEmbeddings()
+        self._memory: dict = {}
+        self._chat_runnable: RunnableWithMessageHistory = get_chat_runnable(
+            llm=self._llm,
+            get_history_func=self.get_chat,
+        )
+        self._rag_runnable: RunnableWithMessageHistory = get_rag_runnable(
+            llm=self._llm,
+            get_history_func=self.get_chat,
+            retriever=self._retriever,
+        )
 
     def add_chunks_to_vector_store(self, chunks: list[Chunk]) -> None:
         """Takes a list of Chunks and embedds them into the vector store
@@ -98,13 +97,37 @@ class LLMHandler(object):
         # it requires tha batch size to be smaller than 166 but some documents have >300 chunks
         batch_size = 160
         for i in range(0, len(chunks), batch_size):
-            self.vector_store.add_texts(
+            self._vector_store.add_texts(
                 texts=[chunk.text for chunk in chunks[i : i + batch_size]],
                 metadatas=[meta for meta in sanitised_metadatas[i : i + batch_size]],
                 ids=[chunk.uuid for chunk in chunks[i : i + batch_size]],
             )
 
-    def chat_with_rag(
+    def get_chat(self, chat_uuid: UUID) -> BaseChatMessageHistory:
+        if chat_uuid not in self._memory:
+            self._memory[chat_uuid] = ChatMessageHistory()
+
+        return self._memory[chat_uuid]
+
+    def chat(self, input: str, chat_uuid: UUID) -> str:
+        return self._chat_runnable.invoke({"input": input}, config={"configurable": {"session_id": chat_uuid}})
+
+    def chat_stream(self, input: str, chat_uuid: UUID) -> Iterable:
+        return self._chat_runnable.stream({"input": input}, config={"configurable": {"session_id": chat_uuid}})
+
+    def chat_with_rag(self, question: str, chat_uuid: UUID, current_date: str, user_info: str) -> str:
+        return self._rag_runnable.invoke(
+            {"question": question, "current_date": current_date, "user_info": user_info},
+            config={"configurable": {"session_id": chat_uuid}},
+        )
+
+    def chat_with_rag_stream(self, question: str, chat_uuid: UUID, current_date: str, user_info: str) -> Iterable:
+        return self._rag_runnable.stream(
+            {"question": question, "current_date": current_date, "user_info": user_info},
+            config={"configurable": {"session_id": chat_uuid}},
+        )
+
+    def chat_with_rag_old(
         self,
         user_question: str,
         user_info: dict,
@@ -125,14 +148,14 @@ class LLMHandler(object):
         """
 
         docs_with_sources_chain = load_qa_with_sources_chain(
-            self.llm,
+            self._llm,
             chain_type="stuff",
             prompt=WITH_SOURCES_PROMPT,
             document_prompt=STUFF_DOCUMENT_PROMPT,
             verbose=True,
         )
 
-        condense_question_chain = LLMChain(llm=self.llm, prompt=CONDENSE_QUESTION_PROMPT)
+        condense_question_chain = LLMChain(llm=self._llm, prompt=CONDENSE_QUESTION_PROMPT)
 
         # split chain manually, so that the standalone question doesn't leak into chat
         # should we display some waiting message instead?
@@ -145,7 +168,7 @@ class LLMHandler(object):
             }
         )["text"]
 
-        docs = self.vector_store.as_retriever().get_relevant_documents(
+        docs = self._retriever.get_relevant_documents(
             standalone_question,
         )
 
@@ -160,8 +183,8 @@ class LLMHandler(object):
         )
         return result, docs_with_sources_chain
 
-    def get_spotlight_tasks(self, files: list[File], file_hash: str) -> Spotlight:
-        spotlight = Spotlight(
+    def get_summary_tasks(self, files: list[File], file_hash: str) -> Summary:
+        summary = Summary(
             files=files,
             file_hash=file_hash,
             tasks=[
@@ -171,21 +194,21 @@ class LLMHandler(object):
                 key_people_task,
             ],
         )
-        return spotlight
+        return summary
 
-    def run_spotlight_task(
+    def run_summary_task(
         self,
-        spotlight: Spotlight,
-        task: SpotlightTask,
+        summary: Summary,
+        task: SummaryTask,
         user_info: dict,
         callbacks: Optional[list] = None,
         map_reduce: bool = False,
         token_max: int = 100_000,
     ) -> tuple[Any, StuffDocumentsChain | MapReduceDocumentsChain]:
-        map_chain = LLMChain(llm=self.llm, prompt=task.prompt_template)  # type: ignore
+        map_chain = LLMChain(llm=self._llm, prompt=task.prompt_template)  # type: ignore
         regular_chain = StuffDocumentsChain(llm_chain=map_chain, document_variable_name="text")
 
-        reduce_chain = LLMChain(llm=self.llm, prompt=SPOTLIGHT_COMBINATION_TASK_PROMPT)
+        reduce_chain = LLMChain(llm=self._llm, prompt=SUMMARY_COMBINATION_TASK_PROMPT)
         combine_documents_chain = StuffDocumentsChain(llm_chain=reduce_chain, document_variable_name="text")
         reduce_documents_chain = ReduceDocumentsChain(
             combine_documents_chain=combine_documents_chain,
@@ -203,7 +226,7 @@ class LLMHandler(object):
             result = map_reduce_chain.run(
                 user_info=user_info,
                 current_date=date.today().isoformat(),
-                input_documents=spotlight.to_documents(),
+                input_documents=summary.to_documents(),
                 callbacks=callbacks or [],
             )
             return result, map_reduce_chain
@@ -211,7 +234,7 @@ class LLMHandler(object):
             result = regular_chain.run(
                 user_info=user_info,
                 current_date=date.today().isoformat(),
-                input_documents=spotlight.to_documents(),
+                input_documents=summary.to_documents(),
                 callbacks=callbacks or [],
             )
 

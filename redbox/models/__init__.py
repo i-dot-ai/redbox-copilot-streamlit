@@ -18,12 +18,13 @@ from redbox.models.llm import (
 )
 from redbox.models.persona import ChatPersona
 from redbox.models.settings import Settings
-from redbox.models.spotlight import (
-    Spotlight,
-    SpotlightComplete,
-    SpotlightTask,
-    SpotlightTaskComplete,
+from redbox.models.summary import (
+    Summary,
+    SummaryComplete,
+    SummaryTask,
+    SummaryTaskComplete,
 )
+from redbox.models.user import User
 
 __all__ = [
     "ChatMessage",
@@ -36,14 +37,15 @@ __all__ = [
     "File",
     "UploadFile",
     "FileStatus",
-    "Spotlight",
-    "SpotlightComplete",
-    "SpotlightTask",
-    "SpotlightTaskComplete",
+    "Summary",
+    "SummaryComplete",
+    "SummaryTask",
+    "SummaryTaskComplete",
     "Settings",
     "ModelInfo",
     "EmbeddingResponse",
     "EmbedQueueItem",
     "StatusResponse",
     "ProcessingStatusEnum",
+    "User",
 ]

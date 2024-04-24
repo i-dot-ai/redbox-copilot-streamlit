@@ -15,7 +15,6 @@ tags = st.session_state.backend.list_tags()
 
 # Upload form
 
-
 uploaded_files = st.file_uploader(
     "Upload your documents",
     accept_multiple_files=True,
@@ -61,11 +60,11 @@ if submitted and uploaded_files is not None:  # noqa: C901
             file_to_upload = UploadFile(
                 content_type=ContentType(file_type),
                 filename=sanitised_name,
-                creator_user_uuid=UUID(st.session_state.user_uuid),
+                creator_user_uuid=st.session_state.backend.get_user().uuid,
                 file=uploaded_file,
             )
 
-            file = st.session_state.backend.add_file(file_to_upload)
+            file = st.session_state.backend.create_file(file_to_upload)
             files.append(file)
 
         st.toast(body=f"{file.name} Complete")

@@ -8,7 +8,7 @@ from docx.shared import Inches
 from unstructured.partition.html import partition_html
 
 from redbox import __version__ as redbox_version
-from redbox.models import File, SpotlightComplete
+from redbox.models import File, SummaryComplete
 
 
 def lookup_indentedness(raw: str, line_str_to_match: str):
@@ -18,8 +18,8 @@ def lookup_indentedness(raw: str, line_str_to_match: str):
             return len(line) - len(line.lstrip(" "))
 
 
-def spotlight_complete_to_docx(
-    spotlight_complete: SpotlightComplete,
+def summary_complete_to_docx(
+    summary_complete: SummaryComplete,
     files: list[File],
     title: Optional[str] = None,
 ):
@@ -40,7 +40,7 @@ def spotlight_complete_to_docx(
     # Add page number to header (right hand side)
 
     footer = section.footer
-    summary_datetime = parser.parse(spotlight_complete.created_datetime.isoformat())
+    summary_datetime = parser.parse(summary_complete.created_datetime.isoformat())
     footer.paragraphs[
         0
     ].text = (
@@ -58,7 +58,7 @@ def spotlight_complete_to_docx(
     for file in files:
         document.add_paragraph(file.name, style="List Bullet")
 
-    for task in spotlight_complete.tasks:
+    for task in summary_complete.tasks:
         document.add_heading(task.title, level=1)
 
         uuid_to_file_map = {f.uuid: f for f in files}
