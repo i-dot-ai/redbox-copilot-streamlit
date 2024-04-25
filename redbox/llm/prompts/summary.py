@@ -5,8 +5,8 @@ from redbox.llm.prompts.core import _core_redbox_prompt
 # ==================== SUMMARY ====================
 
 _summary_template = """=== TASK INSTRUCTIONS ===
-You will be given a document or multiple documents containted in <DocX> tags, X will be a UUID. \
-The X indicates the document number. Docs can be of numerous formats and topics. \
+You will be given a document or multiple documents. \
+Docs can be of numerous formats and topics. \
 Some will be informational, some communications, some policy, some data. \
 Respond with a markdown formatted summary of the text. \
 Your summary should be no more than 3 sentences for all of the documents combined. \
@@ -15,18 +15,11 @@ Be sure to give a combined summary of all the documents and not just one of them
 If some of the documents aren't on the same topic, give a summary for each topic. \
 RESPOND WITH NO PREAMBLE (e.g. No 'Here is the summary of...').\
 Use the provided current date and time to refer to dates in the text in the correct tense. \
-If dealing with multiple <DocX> tags, combine the summaries into one. \
-If dealing with multiple documents reference them directly in your response as a single tag \
-(e.g. "In the email <DocX> from Y..."). \
-If dealing with just a single document don't reference it with any tags, just give a summary. \
-Do not include any of the above examples in your response. \
-IF CITING, CITATIONS MUST BE IN THE FOLLOWING FORMAT: <DocX>. No other brackets are acceptable. \
-
 The summary from this task **MUST BE TRANSLATED** into the user's preferred language (default British English) \
 no matter the original language.\
 This is so that the user can understand your responses.\
 
-{text} \
+{documents} \
 """
 
 SUMMARY_TASK_PROMPT = PromptTemplate.from_template(_core_redbox_prompt + _summary_template)
@@ -58,7 +51,7 @@ This is so that the user can understand your responses.\
 
 Do not include any of the above examples in your response. \
 
-{text} \
+{documents} \
 """
 
 SUMMARY_KEY_PEOPLE_TASK_PROMPT = PromptTemplate.from_template(_core_redbox_prompt + _key_people_template)
@@ -96,7 +89,7 @@ This is so that the user can understand your responses.\
 
 Do not include any of the above examples in your response. \
 
-{text} \
+{documents} \
 """
 
 SUMMARY_KEY_ACTIONS_TASK_PROMPT = PromptTemplate.from_template(_core_redbox_prompt + _key_actions_template)
@@ -131,7 +124,7 @@ This is so that the user can understand your responses.\
 
 Do not include any of the above examples in your response. \
 
-{text} \
+{documents} \
 """
 
 SUMMARY_KEY_DATES_TASK_PROMPT = PromptTemplate.from_template(_core_redbox_prompt + _key_dates_prompt)
@@ -165,7 +158,7 @@ This is so that the user can understand your responses.\
 
 Do not include any of the above examples in your response. \
 
-{text} \
+{documents} \
 """
 
 SUMMARY_KEY_DISCUSSION_TASK_PROMPT = PromptTemplate.from_template(_core_redbox_prompt + _key_discussion_prompt)
@@ -187,7 +180,7 @@ DO NOT cite the summaries/summarys themselves as sources. \
 Only cite the source documents which will always have the <DocX> format. \
 DO NOT INCLUDE the example string "<DocX>" TAGS IN YOUR RESPONSE. \
 
-{text} \
+{documents} \
 """
 
 SUMMARY_COMBINATION_TASK_PROMPT = PromptTemplate.from_template(_core_redbox_prompt + _summary_combination_prompt)

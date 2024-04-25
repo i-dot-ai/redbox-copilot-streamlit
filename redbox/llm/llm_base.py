@@ -29,7 +29,7 @@ from redbox.llm.summary.summary import (
 from redbox.models.file import Chunk, File
 from redbox.models.summary import Summary, SummaryTask
 from redbox.models.chat import ChatMessage
-from redbox.llm.prompts.chat import get_chat_runnable, get_rag_runnable
+from redbox.llm.prompts.chat import get_chat_runnable, get_rag_runnable, get_summary_runnable
 from langchain_community.chat_models import ChatLiteLLM
 
 
@@ -181,6 +181,30 @@ class LLMHandler(object):
         return self._runnables[chat_uuid].stream(
             {
                 "question": question,
+                "current_date": current_date,
+                "user_info": user_info,
+            },
+            config={"configurable": {"session_id": chat_uuid}},
+        )
+
+    def summary(
+        self,
+        file_uuids: list[UUID],
+        chat_uuid: UUID,
+        current_date: str,
+        user_info: str,
+        init_messages: list[ChatMessage] = None,
+    ):
+        # docs = self._vector_store.
+        if chat_uuid not in self._runnables:
+            self._runnables[chat_uuid] = get_summary_runnable(
+                llm=self._llm,
+                init_messages=init_messages,
+                retriever=self._vector_store.as_retriever(**retriever_kwargs),
+            )
+        return self._runnables[chat_uuid].invoke(
+            {
+                "report_request": report_request,
                 "current_date": current_date,
                 "user_info": user_info,
             },

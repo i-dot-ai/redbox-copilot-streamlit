@@ -37,7 +37,7 @@ If dealing dealing with lots of data return it in markdown table format.
 
 QUESTION: {question}
 =========
-{summaries}
+{documents}
 =========
 FINAL ANSWER:"""
 
@@ -100,7 +100,7 @@ def get_rag_runnable(
 
     prompt = ChatPromptTemplate.from_messages(init_messages)
     context = itemgetter("question") | retriever
-    setup = RunnablePassthrough.assign(summaries=context | format_docs, sources=context)
+    setup = RunnablePassthrough.assign(documents=context | format_docs, sources=context)
     runnable = setup | {
         "response": prompt | llm,
         "sources": itemgetter("sources"),
@@ -119,41 +119,21 @@ def get_rag_runnable(
 
 def get_summary_runnable(
     llm: ChatLiteLLM,
-    get_history_func: Callable,
     retriever: VectorStoreRetriever,
     init_messages: Optional[list[ChatMessage]] = None,
 ) -> RunnableWithMessageHistory:
     if init_messages is None:
         init_messages = [
             ("system", _core_redbox_prompt),
-            ("placeholder", "{history}"),
             ("human", _with_sources_template),
         ]
-    # if not isinstance(init_messages, list):
-    #     init_messages = [init_messages]
-
-    system_messages: list[ChatMessage] = []
-    human_messages: list[ChatMessage] = []
-    for message in init_messages:
-        if message["role"] == "system":
-            system_messages.append(message)
-        else:
-            human_messages.append(message)
 
     prompt = ChatPromptTemplate.from_messages(init_messages)
-    context = itemgetter("question") | retriever
-    setup = RunnablePassthrough.assign(summaries=context | format_docs, sources=context)
+    context = itemgetter("report_request") | retriever
+    setup = RunnablePassthrough.assign(documents=context | format_docs, sources=context)
     runnable = setup | {
         "response": prompt | llm,
         "sources": itemgetter("sources"),
     }
 
-    with_message_history = RunnableWithMessageHistory(
-        runnable,
-        get_session_history=get_history_func,
-        input_messages_key="question",
-        output_messages_key="response",
-        history_messages_key="history",
-    )
-
-    return with_message_history
+    return runnable

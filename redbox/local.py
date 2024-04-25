@@ -321,3 +321,19 @@ class LocalBackendAdapter(BackendAdapter):
             init_messages=init_messages,
         )
         return response
+
+    def summary(
+        self,
+        file_uuids: list[UUID],
+        chat_uuid: UUID,
+        init_messages: Optional[list[ChatMessage]] = None,
+    ) -> Iterable:
+        response = self._llm_handler.summary(
+            chat_uuid=chat_uuid,
+            current_date=date.today().isoformat(),
+            user_info=self.get_user().summary(),
+            file_uuids=file_uuids,
+            init_messages=init_messages,
+            retriever_kwargs={"search_type": "similarity", "search_kwargs": {"k": 4}},
+        )
+        return response

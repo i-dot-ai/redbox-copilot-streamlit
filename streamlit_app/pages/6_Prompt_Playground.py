@@ -6,6 +6,7 @@ from datetime import datetime
 
 from redbox.llm.prompts.core import _core_redbox_prompt
 from redbox.llm.prompts.chat import _with_sources_template
+from redbox.llm.prompts.summary import _summary_template
 from streamlit_app.utils import (
     init_session_state,
     submit_feedback,
@@ -108,7 +109,7 @@ def gen_default_prompt(n: int, chat_mode: bool) -> tuple[str, str]:
             case 0:
                 return ("system", _core_redbox_prompt)
             case 1:
-                return ("human", _with_sources_template)
+                return ("human", _summary_template)
             case _ if n % 2:
                 return ("human", "")
             case _:
@@ -203,17 +204,17 @@ with st.expander("Prompts", expanded=False):
     required_fields = {
         "{current_date}",
         "{user_info}",
-        "{summaries}",
+        "{documents}",
         "{question}",
         "{history}",
     }
     roles = {"system", "placeholder", "human", "ai"}
 
     if chat_mode:
-        required_fields.add("{history}")
+        required_fields.update(["{history}", "{question}"])
         roles.add("{placeholder}")
     else:
-        required_fields.discard("{history}")
+        required_fields -= {"{history}", "{question}"}
         roles.discard("{placeholder}")
 
     prompt_count = st.number_input("Prompt count", min_value=0, value=3)
@@ -237,12 +238,12 @@ with st.expander("Prompts", expanded=False):
         text_key = f"text_{i}"
 
         st.selectbox(
-            "Role",
+            label="Role",
             options=role_list,
             index=role_list.index(prompt[0]),
             key=role_key,
         )
-        text = st.text_area("System", value=prompt[1], height=200, key=text_key)
+        text = st.text_area("Prompt", value=prompt[1], height=200, key=text_key)
         altered_prompt_list.append((st.session_state[role_key], st.session_state[text_key]))
 
     st.session_state.prompt_list = altered_prompt_list
@@ -298,11 +299,53 @@ else:
     submitted = st.button("Redbox Copilot Summary")
 
     # Using this state trick to allow post gen download without reload.
-    if submitted:
-        if summary_file_select:
-            st.session_state.submitted = True
-        else:
-            st.warning("Please select document(s)")
-            unsubmit_session_state()
+    # if submitted:
+    #     if summary_file_select:
+    #         st.session_state.submitted = True
+    #     else:
+    #         st.warning("Please select document(s)")
+    #         unsubmit_session_state()
 
-    st.write(summary_file_select)
+    if submitted:
+        response_with_sources = st.session_state.backend.summary(
+            report_request=st.session_state.prompt_list[-1][1],
+            chat_uuid=st.session_state.chat_id,
+            init_messages=st.session_state.prompt_list[:-1],
+        )
+        st.write(response_with_sources["response"].content)
+        st.write(response_with_sources["sources"])
+
+
+st.write(st.session_state.backend._es.info())
+
+# response = st.session_state.backend._es.search(
+#     index="redbox-data-file", query={"match": {"summary": {"query": "guide"}}}
+# )
+
+# st.write(pretty_response(response))
+
+
+st.write(
+    st.session_state.backend._es.indices.get_alias(
+        index="*",
+    )
+)
+
+# st.write(
+#     st.session_state.backend._es.search(
+#         index="redbox-data-chunk",
+#         query={"match_all": {}}
+#     )['hits']['hits']
+# )
+
+
+st.write(
+    st.session_state.backend._es.search(
+        index="redbox-data-chunk",
+        query={"match": {"parent_file_uuid": {"query": "d9b8d6d4-e1f5-49f4-8efd-9a7b767a7e06"}}},
+    )["hits"]["hits"]
+)
+
+# st.write(
+#     st.session_state.backend._storage_handler.
+# )

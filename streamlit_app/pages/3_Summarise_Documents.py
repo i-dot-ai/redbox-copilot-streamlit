@@ -151,7 +151,7 @@ with st.expander("Prompts", expanded=False):
 
     human = st.text_area("Request", value=_with_sources_template, height=300)
 
-    human_fields = ["{ summaries }", "{ question }"]
+    human_fields = ["{ documents }", "{ question }"]
     human_field_warnings = []
     for field in human_fields:
         if field.replace(" ", "") not in human.replace(" ", ""):
