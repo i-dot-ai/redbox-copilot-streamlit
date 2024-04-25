@@ -9,43 +9,46 @@ from streamlit_feedback import streamlit_feedback
 
 from redbox.llm.prompts.core import CORE_REDBOX_PROMPT
 from redbox.models.chat import ChatMessage
-from streamlit_app.utils import init_session_state, submit_feedback, get_stream_key, render_document_citations
+from streamlit_app.utils import (
+    init_session_state,
+    submit_feedback,
+    get_stream_key,
+    render_document_citations,
+    change_selected_model,
+)
 
 st.set_page_config(page_title="Redbox Copilot - Ask the Box", page_icon="📮", layout="wide")
 
-# ==================== Global and session state variables, functions ====================
+# region Global and session state variables, functions ====================
 
-ENV = init_session_state()
-USER = st.session_state.backend.get_user()
-INITIAL_CHAT_PROMPT = [
-    ChatMessage(
-        text=CORE_REDBOX_PROMPT.format(
-            current_date=date.today().isoformat(),
-            user_info=USER.summary(),
+with st.spinner("Loading..."):
+    ENV = init_session_state()
+    USER = st.session_state.backend.get_user()
+    INITIAL_CHAT_PROMPT = [
+        ChatMessage(
+            text=CORE_REDBOX_PROMPT.format(
+                current_date=date.today().isoformat(),
+                user_info=USER.summary(),
+            ),
+            role="system",
         ),
-        role="system",
-    ),
-    ChatMessage(text="Hi, I'm Redbox Copilot. How can I help you?", role="ai"),
-]
-AVATAR_MAP = {"human": "🧑‍💻", "ai": "📮", "user": "🧑‍💻", "assistant": "📮", "AIMessageChunk": "📮"}
-FEEDBACK_KWARGS = {
-    "feedback_type": "thumbs",
-    "optional_text_label": "What did you think of this response?",
-    "on_submit": submit_feedback,
-}
-
-
-def change_selected_model() -> None:
-    st.session_state.backend.set_llm(
-        model=st.session_state.model_select,
-        max_tokens=st.session_state.model_params["max_tokens"],
-        temperature=st.session_state.model_params["temperature"],
-    )
-    st.toast(f"Loaded {st.session_state.model_select}")
+        ChatMessage(text="Hi, I'm Redbox Copilot. How can I help you?", role="ai"),
+    ]
+    AVATAR_MAP = {
+        "human": "🧑‍💻",
+        "ai": "📮",
+        "user": "🧑‍💻",
+        "assistant": "📮",
+        "AIMessageChunk": "📮",
+    }
+    FEEDBACK_KWARGS = {
+        "feedback_type": "thumbs",
+        "optional_text_label": "What did you think of this response?",
+        "on_submit": submit_feedback,
+    }
 
 
 def clear_chat() -> None:
-    st.session_state.backend.set_chat_prompt(init_messages=INITIAL_CHAT_PROMPT)
     st.session_state.chat_id = uuid4()
     # clear feedback
     for key in list(st.session_state.keys()):
@@ -73,7 +76,7 @@ if "messages" not in st.session_state:
 if st.session_state.chat_id not in st.session_state.messages:
     st.session_state.messages[st.session_state.chat_id] = []
 
-# ==================== Sidebar ====================
+# region Sidebar ====================
 
 with st.sidebar:
     model_select = st.selectbox(
@@ -95,7 +98,7 @@ with st.sidebar:
         file_name=(f"redboxai_conversation_{USER.uuid}" f"_{datetime.now().isoformat().replace('.', '_')}.json"),
     )
 
-# ==================== RAG chat ====================
+# region RAG chat ====================
 
 # History
 
@@ -103,13 +106,19 @@ for i, chat_message in enumerate(st.session_state.messages[st.session_state.chat
     with st.chat_message(chat_message["role"], avatar=AVATAR_MAP[chat_message["role"]]):
         st.write(chat_message["content"])
         if chat_message["sources"]:
-            st.markdown(render_document_citations(chat_message["sources"]), unsafe_allow_html=True)
+            st.markdown(
+                render_document_citations(chat_message["sources"]),
+                unsafe_allow_html=True,
+            )
 
         if chat_message["role"] == "assistant":
             streamlit_feedback(
                 **FEEDBACK_KWARGS,
                 key=f"feedback_{i}",
-                kwargs=format_feedback_kwargs(chat_history=st.session_state.messages[st.session_state.chat_id], n=i),
+                kwargs=format_feedback_kwargs(
+                    chat_history=st.session_state.messages[st.session_state.chat_id],
+                    n=i,
+                ),
             )
 
 # Input

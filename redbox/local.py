@@ -26,7 +26,6 @@ from redbox.models import (
     Feedback,
 )
 from redbox.llm.llm_base import LLMHandler
-from redbox.llm.prompts.chat import get_chat_runnable
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -55,7 +54,7 @@ class LocalBackendAdapter(BackendAdapter):
         # User
         self._user: Optional[User] = None
 
-    # ==================== USER AND CONFIG ====================
+    # region USER AND CONFIG ====================
     def status(self):
         return {
             "llm": self._llm is not None,
@@ -68,15 +67,28 @@ class LocalBackendAdapter(BackendAdapter):
             "s3": self._s3 is not None,
         }
 
-    def set_user(self, name: str, email: str, uuid: UUID, department: str, role: str, preferred_language: str) -> None:
+    def set_user(
+        self,
+        name: str,
+        email: str,
+        uuid: UUID,
+        department: str,
+        role: str,
+        preferred_language: str,
+    ) -> None:
         self._user = User(
-            name=name, email=email, uuid=uuid, department=department, role=role, preferred_language=preferred_language
+            name=name,
+            email=email,
+            uuid=uuid,
+            department=department,
+            role=role,
+            preferred_language=preferred_language,
         )
 
     def get_user(self) -> User:
         return self._user
 
-    # ==================== FILES ====================
+    # region FILES ====================
     def create_file(self, file: UploadFile) -> File:
         assert self._llm_handler is not None
         assert self._llm is not None
@@ -96,7 +108,10 @@ class LocalBackendAdapter(BackendAdapter):
 
         authenticated_s3_url = self._s3.generate_presigned_url(
             "get_object",
-            Params={"Bucket": self._settings.bucket_name, "Key": file.filename},
+            Params={
+                "Bucket": self._settings.bucket_name,
+                "Key": file.filename,
+            },
             ExpiresIn=3600,
         )
 
@@ -176,12 +191,12 @@ class LocalBackendAdapter(BackendAdapter):
     def get_supported_file_types(self) -> list[str]:
         return self._file_publisher.supported_file_types
 
-    # ==================== FEEDBACK ====================
+    # region FEEDBACK ====================
     def create_feedback(self, feedback: Feedback) -> Feedback:
         self._storage_handler.write_item(feedback)
         return feedback
 
-    # ==================== TAGS ====================
+    # region TAGS ====================
     def create_tag(self, name: str) -> Tag:
         assert self._user is not None
 
@@ -216,7 +231,7 @@ class LocalBackendAdapter(BackendAdapter):
         self._storage_handler.update_item(item=tag)
         return tag
 
-    # ==================== SUMMARY ====================
+    # region SUMMARY ====================
     def create_summary(self, summary: Summary) -> Summary:
         pass
 
@@ -229,7 +244,7 @@ class LocalBackendAdapter(BackendAdapter):
     def list_summaries(self) -> Sequence[Summary]:
         pass
 
-    # ==================== LLM ====================
+    # region LLM ====================
     def set_llm(self, model: str, max_tokens: int, temperature: int) -> None:
         self._llm = ChatLiteLLM(
             model=model,
@@ -240,7 +255,10 @@ class LocalBackendAdapter(BackendAdapter):
         # A meta, private argument hasn't been typed properly in LangChain
 
         hybrid = False
-        if self._settings.elastic.subscription_level in ("platinum", "enterprise"):
+        if self._settings.elastic.subscription_level in (
+            "platinum",
+            "enterprise",
+        ):
             hybrid = True
 
         vector_store = ElasticsearchStore(
@@ -255,34 +273,51 @@ class LocalBackendAdapter(BackendAdapter):
             vector_store=vector_store,
         )
 
-    def set_chat_prompt(self, init_messages: list[ChatMessage]) -> None:
-        self._llm_handler._chat_runnable = get_chat_runnable(
-            llm=self._llm_handler._llm, get_history_func=self._llm_handler.get_chat, init_messages=init_messages
-        )
-
     def get_chat(self, chat_uuid: UUID) -> BaseChatMessageHistory:
         return self._llm_handler.get_chat(chat_uuid=chat_uuid)
 
-    def simple_chat(self, input: str, chat_uuid: UUID) -> str:
-        return self._llm_handler.chat(input=input, chat_uuid=chat_uuid)
+    def simple_chat(
+        self,
+        input: str,
+        chat_uuid: UUID,
+        init_messages: Optional[list[ChatMessage]],
+    ) -> str:
+        return self._llm_handler.chat(input=input, chat_uuid=chat_uuid, init_messages=init_messages)
 
-    def simple_chat_stream(self, input: str, chat_uuid: UUID) -> Iterable:
-        return self._llm_handler.chat_stream(input=input, chat_uuid=chat_uuid)
+    def simple_chat_stream(
+        self,
+        input: str,
+        chat_uuid: UUID,
+        init_messages: Optional[list[ChatMessage]],
+    ) -> Iterable:
+        return self._llm_handler.chat_stream(input=input, chat_uuid=chat_uuid, init_messages=init_messages)
 
-    def rag_chat(self, question: str, chat_uuid: UUID) -> str:
+    def rag_chat(
+        self,
+        question: str,
+        chat_uuid: UUID,
+        init_messages: Optional[list[ChatMessage]],
+    ) -> str:
         response = self._llm_handler.chat_with_rag(
             question=question,
             chat_uuid=chat_uuid,
             current_date=date.today().isoformat(),
             user_info=self.get_user().summary(),
+            init_messages=init_messages,
         )
         return response
 
-    def rag_chat_stream(self, question: str, chat_uuid: UUID) -> Iterable:
+    def rag_chat_stream(
+        self,
+        question: str,
+        chat_uuid: UUID,
+        init_messages: Optional[list[ChatMessage]] = None,
+    ) -> Iterable:
         response = self._llm_handler.chat_with_rag_stream(
             question=question,
             chat_uuid=chat_uuid,
             current_date=date.today().isoformat(),
             user_info=self.get_user().summary(),
+            init_messages=init_messages,
         )
         return response

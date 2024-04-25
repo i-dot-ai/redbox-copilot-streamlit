@@ -222,7 +222,10 @@ class ElasticsearchStorageHandler(BaseStorageHandler):
         embedded_chunk_uuids = self._get_embedded_child_chunks(file_uuid)
 
         chunk_statuses = [
-            ChunkStatus(chunk_uuid=chunk_uuid, embedded=chunk_uuid in embedded_chunk_uuids)
+            ChunkStatus(
+                chunk_uuid=chunk_uuid,
+                embedded=chunk_uuid in embedded_chunk_uuids,
+            )
             for chunk_uuid in chunk_uuids
         ]
 

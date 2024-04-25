@@ -28,6 +28,7 @@ from redbox.llm.summary.summary import (
 )
 from redbox.models.file import Chunk, File
 from redbox.models.summary import Summary, SummaryTask
+from redbox.models.chat import ChatMessage
 from redbox.llm.prompts.chat import get_chat_runnable, get_rag_runnable
 from langchain_community.chat_models import ChatLiteLLM
 
@@ -53,18 +54,9 @@ class LLMHandler(object):
 
         self._llm = llm
         self._vector_store = vector_store
-        self._retriever = self._vector_store.as_retriever()
 
         self._memory: dict = {}
-        self._chat_runnable: RunnableWithMessageHistory = get_chat_runnable(
-            llm=self._llm,
-            get_history_func=self.get_chat,
-        )
-        self._rag_runnable: RunnableWithMessageHistory = get_rag_runnable(
-            llm=self._llm,
-            get_history_func=self.get_chat,
-            retriever=self._retriever,
-        )
+        self._runnables: dict[UUID, RunnableWithMessageHistory] = {}
 
     def add_chunks_to_vector_store(self, chunks: list[Chunk]) -> None:
         """Takes a list of Chunks and embedds them into the vector store
@@ -109,21 +101,89 @@ class LLMHandler(object):
 
         return self._memory[chat_uuid]
 
-    def chat(self, input: str, chat_uuid: UUID) -> str:
-        return self._chat_runnable.invoke({"input": input}, config={"configurable": {"session_id": chat_uuid}})
+    def chat(
+        self,
+        input: str,
+        chat_uuid: UUID,
+        init_messages: Optional[list[ChatMessage]] = None,
+    ) -> str:
+        if chat_uuid not in self._runnables:
+            self._runnables[chat_uuid] = get_chat_runnable(
+                llm=self._llm,
+                get_history_func=self.get_chat,
+                init_messages=init_messages,
+            )
 
-    def chat_stream(self, input: str, chat_uuid: UUID) -> Iterable:
-        return self._chat_runnable.stream({"input": input}, config={"configurable": {"session_id": chat_uuid}})
-
-    def chat_with_rag(self, question: str, chat_uuid: UUID, current_date: str, user_info: str) -> str:
-        return self._rag_runnable.invoke(
-            {"question": question, "current_date": current_date, "user_info": user_info},
+        return self._runnables[chat_uuid].invoke(
+            {"input": input},
             config={"configurable": {"session_id": chat_uuid}},
         )
 
-    def chat_with_rag_stream(self, question: str, chat_uuid: UUID, current_date: str, user_info: str) -> Iterable:
-        return self._rag_runnable.stream(
-            {"question": question, "current_date": current_date, "user_info": user_info},
+    def chat_stream(
+        self,
+        input: str,
+        chat_uuid: UUID,
+        init_messages: list[ChatMessage] = None,
+    ) -> Iterable:
+        if chat_uuid not in self._runnables:
+            self._runnables[chat_uuid] = get_chat_runnable(
+                llm=self._llm,
+                get_history_func=self.get_chat,
+                init_messages=init_messages,
+            )
+
+        return self._runnables[chat_uuid].stream(
+            {"input": input},
+            config={"configurable": {"session_id": chat_uuid}},
+        )
+
+    def chat_with_rag(
+        self,
+        question: str,
+        chat_uuid: UUID,
+        current_date: str,
+        user_info: str,
+        init_messages: list[ChatMessage] = None,
+        retriever_kwargs: Optional[dict] = {},
+    ) -> str:
+        if chat_uuid not in self._runnables:
+            self._runnables[chat_uuid] = get_rag_runnable(
+                llm=self._llm,
+                get_history_func=self.get_chat,
+                init_messages=init_messages,
+                retriever=self._vector_store.as_retriever(**retriever_kwargs),
+            )
+        return self._runnables[chat_uuid].invoke(
+            {
+                "question": question,
+                "current_date": current_date,
+                "user_info": user_info,
+            },
+            config={"configurable": {"session_id": chat_uuid}},
+        )
+
+    def chat_with_rag_stream(
+        self,
+        question: str,
+        chat_uuid: UUID,
+        current_date: str,
+        user_info: str,
+        init_messages: list[ChatMessage] = None,
+        retriever_kwargs: Optional[dict] = {},
+    ) -> Iterable:
+        if chat_uuid not in self._runnables:
+            self._runnables[chat_uuid] = get_rag_runnable(
+                llm=self._llm,
+                get_history_func=self.get_chat,
+                init_messages=init_messages,
+                retriever=self._vector_store.as_retriever(**retriever_kwargs),
+            )
+        return self._runnables[chat_uuid].stream(
+            {
+                "question": question,
+                "current_date": current_date,
+                "user_info": user_info,
+            },
             config={"configurable": {"session_id": chat_uuid}},
         )
 

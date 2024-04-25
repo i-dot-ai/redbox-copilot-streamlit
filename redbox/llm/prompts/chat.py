@@ -86,14 +86,67 @@ def format_docs(docs):
 
 
 def get_rag_runnable(
-    llm: ChatLiteLLM, get_history_func: Callable, retriever: VectorStoreRetriever
+    llm: ChatLiteLLM,
+    get_history_func: Callable,
+    retriever: VectorStoreRetriever,
+    init_messages: Optional[list[ChatMessage]] = None,
 ) -> RunnableWithMessageHistory:
-    prompt = ChatPromptTemplate.from_messages(
-        [("system", _core_redbox_prompt), ("placeholder", "{history}"), ("human", _with_sources_template)]
-    )
+    if init_messages is None:
+        init_messages = [
+            ("system", _core_redbox_prompt),
+            ("placeholder", "{history}"),
+            ("human", _with_sources_template),
+        ]
+
+    prompt = ChatPromptTemplate.from_messages(init_messages)
     context = itemgetter("question") | retriever
     setup = RunnablePassthrough.assign(summaries=context | format_docs, sources=context)
-    runnable = setup | {"response": prompt | llm, "sources": itemgetter("sources")}
+    runnable = setup | {
+        "response": prompt | llm,
+        "sources": itemgetter("sources"),
+    }
+
+    with_message_history = RunnableWithMessageHistory(
+        runnable,
+        get_session_history=get_history_func,
+        input_messages_key="question",
+        output_messages_key="response",
+        history_messages_key="history",
+    )
+
+    return with_message_history
+
+
+def get_summary_runnable(
+    llm: ChatLiteLLM,
+    get_history_func: Callable,
+    retriever: VectorStoreRetriever,
+    init_messages: Optional[list[ChatMessage]] = None,
+) -> RunnableWithMessageHistory:
+    if init_messages is None:
+        init_messages = [
+            ("system", _core_redbox_prompt),
+            ("placeholder", "{history}"),
+            ("human", _with_sources_template),
+        ]
+    # if not isinstance(init_messages, list):
+    #     init_messages = [init_messages]
+
+    system_messages: list[ChatMessage] = []
+    human_messages: list[ChatMessage] = []
+    for message in init_messages:
+        if message["role"] == "system":
+            system_messages.append(message)
+        else:
+            human_messages.append(message)
+
+    prompt = ChatPromptTemplate.from_messages(init_messages)
+    context = itemgetter("question") | retriever
+    setup = RunnablePassthrough.assign(summaries=context | format_docs, sources=context)
+    runnable = setup | {
+        "response": prompt | llm,
+        "sources": itemgetter("sources"),
+    }
 
     with_message_history = RunnableWithMessageHistory(
         runnable,

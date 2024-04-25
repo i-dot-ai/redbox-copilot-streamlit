@@ -124,7 +124,12 @@ for i, chat_response in enumerate(st.session_state.messages):
     msg = chat_response.message
     if msg.type == "system":
         continue
-    avatar_map = {"human": "🧑‍💻", "ai": "📮", "user": "🧑‍💻", "assistant": "📮"}
+    avatar_map = {
+        "human": "🧑‍💻",
+        "ai": "📮",
+        "user": "🧑‍💻",
+        "assistant": "📮",
+    }
     if hash(msg.content) in st.session_state.ai_message_markdown_lookup:
         with st.chat_message(msg.type, avatar=avatar_map[msg.type]):
             st.markdown(

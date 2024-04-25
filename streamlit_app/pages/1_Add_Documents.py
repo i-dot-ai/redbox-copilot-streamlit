@@ -24,7 +24,11 @@ uploaded_files = st.file_uploader(
 new_tag_uuid = UUID("ffffffff-ffff-ffff-ffff-ffffffffffff")
 no_tag_uuid = UUID("00000000-0000-0000-0000-000000000000")
 tag_uuid_name_map_raw = {x.uuid: x.name for x in tags}
-tag_uuid_name_map = {new_tag_uuid: "➕ New tag...", no_tag_uuid: "No associated tag", **tag_uuid_name_map_raw}
+tag_uuid_name_map = {
+    new_tag_uuid: "➕ New tag...",
+    no_tag_uuid: "No associated tag",
+    **tag_uuid_name_map_raw,
+}
 
 tag_selection = st.selectbox(
     "Add to tag:",

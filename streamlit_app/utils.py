@@ -6,6 +6,7 @@ from datetime import datetime
 from io import BytesIO
 from typing import Optional, Generator
 import json
+import logging
 
 import dotenv
 import html2markdown
@@ -30,6 +31,27 @@ from redbox.local import LocalBackendAdapter
 env = Settings()
 
 DEV_UUID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+
+
+def get_logger() -> logging.Logger:
+    logger = logging.getLogger("redbox-streamlit")
+    logger.setLevel(logging.INFO)
+
+    formatter = logging.Formatter(
+        "[%(asctime)s | %(name)s | %(levelname)s] %(message)s",
+        "%Y-%m-%d %H:%M",
+    )
+
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(formatter)
+
+    logger.addHandler(handler)
+
+    return logger
+
+
+LOG = get_logger()
 
 
 def init_session_state() -> dict:
@@ -114,7 +136,10 @@ def init_session_state() -> dict:
                 st.cache_data.clear()
 
     else:
-        st.session_state.model_params = {"max_tokens": 4096, "temperature": 0.2}
+        st.session_state.model_params = {
+            "max_tokens": 4096,
+            "temperature": 0.2,
+        }
 
     if "backend" not in st.session_state:
         st.session_state.backend = LocalBackendAdapter(settings=env)
@@ -153,7 +178,12 @@ def init_session_state() -> dict:
     return ENV
 
 
-def get_link_html(page: str, text: str, query_dict: Optional[dict] = None, target: str = "_self") -> str:
+def get_link_html(
+    page: str,
+    text: str,
+    query_dict: Optional[dict] = None,
+    target: str = "_self",
+) -> str:
     """Returns a link in HTML format
 
     Args:
@@ -299,7 +329,10 @@ class FilePreview(object):
         st.dataframe(df, use_container_width=True)
 
     def _render_eml(self, file: File, file_bytes: bytes) -> None:
-        st.markdown(self.cleaner.clean_html(file_bytes.decode("utf-8")), unsafe_allow_html=True)
+        st.markdown(
+            self.cleaner.clean_html(file_bytes.decode("utf-8")),
+            unsafe_allow_html=True,
+        )
 
     def _render_html(self, file: File, file_bytes: bytes) -> None:
         markdown_html = html2markdown.convert(file_bytes.decode("utf-8"))
@@ -370,7 +403,10 @@ def eval_csv_to_squad_json(csv_path: str, json_path: str) -> None:
     df = pd.read_csv(csv_path)
     df["uuid"] = df.apply(lambda _: uuid.uuid4(), axis=1)
     (
-        df.rename(dict(answer="ground_truth_answer", document="document_name"), axis=1)
+        df.rename(
+            dict(answer="ground_truth_answer", document="document_name"),
+            axis=1,
+        )
         .set_index("uuid")
         .to_json(orient="index", indent=4, path_or_buf=json_path)
     )
@@ -476,10 +512,19 @@ def render_document_citations(documents: list[Document]) -> str:
 
         if page_numbers is None:
             url = get_file_link(file=file)
-            cited.update([(file, page_numbers, url)])
+            cited.add((file, page_numbers, url))
         else:
             for page in page_numbers:
                 url = get_file_link(file=file, page=page)
-                cited.update([(file, page_numbers, url)])
+                cited.add((file, page_numbers, url))
 
     return "\n".join([citation[2] for citation in cited])
+
+
+def change_selected_model() -> None:
+    st.session_state.backend.set_llm(
+        model=st.session_state.model_select,
+        max_tokens=st.session_state.model_params["max_tokens"],
+        temperature=st.session_state.model_params["temperature"],
+    )
+    st.toast(f"Loaded {st.session_state.model_select}")

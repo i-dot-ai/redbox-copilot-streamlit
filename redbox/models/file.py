@@ -91,7 +91,10 @@ class Chunk(PersistableModel):
     @computed_field  # type: ignore[misc]
     @property
     def text_hash(self) -> str:
-        return hashlib.md5(self.text.encode(encoding="UTF-8", errors="strict"), usedforsecurity=False).hexdigest()
+        return hashlib.md5(
+            self.text.encode(encoding="UTF-8", errors="strict"),
+            usedforsecurity=False,
+        ).hexdigest()
 
     @computed_field  # type: ignore[misc]
     @property
