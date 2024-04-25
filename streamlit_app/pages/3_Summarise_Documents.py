@@ -5,8 +5,8 @@ from io import BytesIO
 import streamlit as st
 from streamlit_feedback import streamlit_feedback
 
-from redbox.export.docx import spotlight_complete_to_docx
-from redbox.models.spotlight import SpotlightComplete, SpotlightTaskComplete
+from redbox.export.docx import summary_complete_to_docx
+from redbox.models.summary import SummaryComplete, SummaryTaskComplete
 from streamlit_app.utils import (
     StreamlitStreamHandler,
     hash_list_of_files,
@@ -78,7 +78,7 @@ feedback_kwargs = {
 
 # endregion
 
-# spotlight_file_select = st.empty()
+# summary_file_select = st.empty()
 
 
 def update_token_budget_tracker():
@@ -106,7 +106,7 @@ def clear_params():
 
 def unsubmit_session_state():
     update_token_budget_tracker()
-    st.session_state.spotlight = []
+    st.session_state.summary = []
     st.session_state.submitted = False
 
 
@@ -143,7 +143,7 @@ if "tag_title" in url_params:
     files_from_url = [uuid.UUID(x) for x in tag.files]
     files_from_url = [x for x in files_from_url if x in parsed_files_uuid_map.keys()]
 
-spotlight_file_select = st.multiselect(
+summary_file_select = st.multiselect(
     label="Files",
     options=parsed_files_uuid_map.keys(),
     default=files_from_url,
@@ -160,14 +160,14 @@ submitted = st.button("Redbox Copilot Summary")
 
 # Using this state trick to allow post gen download without reload.
 if submitted:
-    if spotlight_file_select:
+    if summary_file_select:
         st.session_state.submitted = True
     else:
         st.warning("Please select document(s)")
         unsubmit_session_state()
 
 files = []
-for file in spotlight_file_select:
+for file in summary_file_select:
     file_to_add = parsed_files_uuid_map[file]
     chunks = st.session_state.storage_handler.get_file_chunks(file_to_add.uuid)
     file_to_add.text = "\n".join([chunk.text for chunk in chunks])
@@ -177,18 +177,18 @@ if len(files) == 0:
     st.stop()
 SELECTED_FILE_HASH = hash_list_of_files(files)
 
-spotlight_completed = st.session_state.storage_handler.read_all_items(model_type="SpotlightComplete")
-spotlight_completed_by_hash = {x.file_hash: x for x in spotlight_completed}
+summary_completed = st.session_state.storage_handler.read_all_items(model_type="SummaryComplete")
+summary_completed_by_hash = {x.file_hash: x for x in summary_completed}
 
 
-# RENDER SPOTLIGHT
+# RENDER SUMMARY
 if st.session_state.submitted:
-    if SELECTED_FILE_HASH in spotlight_completed_by_hash:
+    if SELECTED_FILE_HASH in summary_completed_by_hash:
         st.info("Loading cached summary")
-        cached_complete = spotlight_completed_by_hash[SELECTED_FILE_HASH]
-        st.session_state.spotlight = cached_complete.tasks
+        cached_complete = summary_completed_by_hash[SELECTED_FILE_HASH]
+        st.session_state.summary = cached_complete.tasks
 
-    for completed_task in st.session_state.spotlight:
+    for completed_task in st.session_state.summary:
         st.subheader(completed_task.title, divider=True)
         st.markdown(completed_task.processed, unsafe_allow_html=True)
         streamlit_feedback(
@@ -202,11 +202,11 @@ if st.session_state.submitted:
             },
         )
 
-    if SELECTED_FILE_HASH not in spotlight_completed_by_hash:
-        # RUN SPOTLIGHT
-        spotlight_model = st.session_state.llm_handler.get_spotlight_tasks(files=files, file_hash=SELECTED_FILE_HASH)
-        finished_tasks = [t.id for t in st.session_state.spotlight]
-        for task in spotlight_model.tasks:
+    if SELECTED_FILE_HASH not in summary_completed_by_hash:
+        # RUN SUMMARY
+        summary_model = st.session_state.llm_handler.get_summary_tasks(files=files, file_hash=SELECTED_FILE_HASH)
+        finished_tasks = [t.id for t in st.session_state.summary]
+        for task in summary_model.tasks:
             if task.id not in finished_tasks:
                 response_stream_header = st.subheader(task.title, divider=True)
                 with st.status(
@@ -219,8 +219,8 @@ if st.session_state.submitted:
                         (
                             response,
                             chain,
-                        ) = st.session_state.llm_handler.run_spotlight_task(
-                            spotlight=spotlight_model,
+                        ) = st.session_state.llm_handler.run_summary_task(
+                            summary=summary_model,
                             task=task,
                             user_info=st.session_state.user_info,
                             callbacks=[
@@ -237,41 +237,41 @@ if st.session_state.submitted:
                         response_stream_header.empty()
                         response_stream_text.empty()
 
-                complete = SpotlightTaskComplete(
+                complete = SummaryTaskComplete(
                     id=task.id,
                     title=task.title,
                     chain=chain,
-                    file_hash=spotlight_model.file_hash,
+                    file_hash=summary_model.file_hash,
                     raw=response,
                     processed=response_final_markdown,
                     creator_user_uuid=st.session_state.user_uuid,
                 )
-                st.session_state.spotlight.append(complete)
+                st.session_state.summary.append(complete)
                 st.rerun()
 
-        spotlight_complete = SpotlightComplete(
-            file_hash=spotlight_model.file_hash,
+        summary_complete = SummaryComplete(
+            file_hash=summary_model.file_hash,
             file_uuids=[str(f.uuid) for f in files],
-            tasks=st.session_state.spotlight,
+            tasks=st.session_state.summary,
             creator_user_uuid=st.session_state.user_uuid,
         )
 
-        st.session_state.storage_handler.write_item(item=spotlight_complete)
-        spotlight_completed_by_hash[SELECTED_FILE_HASH] = spotlight_complete
+        st.session_state.storage_handler.write_item(item=summary_complete)
+        summary_completed_by_hash[SELECTED_FILE_HASH] = summary_complete
 
-    def spotlight_to_markdown():
+    def summary_to_markdown():
         out = ""
-        for completed_task in st.session_state.spotlight:
+        for completed_task in st.session_state.summary:
             out += "## " + completed_task.title + "\n\n"
             out += completed_task.processed + "\n\n"
         out += "---------------------------------------------------\n"
         out += "This summary is AI Generated and may be inaccurate."
         return out
 
-    def spotlight_to_docx():
+    def summary_to_docx():
         if tag is not None:
-            document = spotlight_complete_to_docx(
-                spotlight_complete=spotlight_completed_by_hash[SELECTED_FILE_HASH],
+            document = summary_complete_to_docx(
+                summary_complete=summary_completed_by_hash[SELECTED_FILE_HASH],
                 files=files,
                 title=tag.name,
             )
@@ -284,14 +284,14 @@ if st.session_state.submitted:
             # replace any multiple spaces with single space
             sanitised_file_name = " ".join(sanitised_file_name.split())
 
-            document = spotlight_complete_to_docx(
-                spotlight_complete=spotlight_completed_by_hash[SELECTED_FILE_HASH],
+            document = summary_complete_to_docx(
+                summary_complete=summary_completed_by_hash[SELECTED_FILE_HASH],
                 files=files,
                 title=sanitised_file_name,
             )
         else:
-            document = spotlight_complete_to_docx(
-                spotlight_complete=spotlight_completed_by_hash[SELECTED_FILE_HASH],
+            document = summary_complete_to_docx(
+                summary_complete=summary_completed_by_hash[SELECTED_FILE_HASH],
                 files=files,
             )
         bytes_document = BytesIO()
@@ -306,24 +306,24 @@ if st.session_state.submitted:
 
     st.sidebar.download_button(
         label="Download DOCX",
-        data=spotlight_to_docx(),
+        data=summary_to_docx(),
         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         file_name=f"{summary_file_name_root}.docx",
     )
 
     st.sidebar.download_button(
         label="Download TXT",
-        data=spotlight_to_markdown(),
+        data=summary_to_markdown(),
         mime="text/plain",
         file_name=f"{summary_file_name_root}.txt",
     )
 
     def delete_summary():
-        spotlight_completed_to_delete = spotlight_completed_by_hash[SELECTED_FILE_HASH]
-        st.session_state.storage_handler.delete_item(spotlight_completed_to_delete)
-        del spotlight_completed_by_hash[SELECTED_FILE_HASH]
+        summary_completed_to_delete = summary_completed_by_hash[SELECTED_FILE_HASH]
+        st.session_state.storage_handler.delete_item(summary_completed_to_delete)
+        del summary_completed_by_hash[SELECTED_FILE_HASH]
 
-        st.session_state.spotlight = []
+        st.session_state.summary = []
         st.session_state.submitted = False
         st.query_params.clear()
 
