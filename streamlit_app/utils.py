@@ -228,8 +228,8 @@ def init_session_state() -> dict:
             "preffered_language": "British English",
         }
 
-    if "spotlight" not in st.session_state:
-        st.session_state.spotlight = []
+    if "summary" not in st.session_state:
+        st.session_state.summary = []
 
     if "summary_of_summaries_mode" not in st.session_state:
         st.session_state.summary_of_summaries_mode = False

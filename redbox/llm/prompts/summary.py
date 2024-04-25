@@ -4,7 +4,7 @@ from redbox.llm.prompts.core import _core_redbox_prompt
 
 # ==================== SUMMARY ====================
 
-_spotlight_summary_template = """=== TASK INSTRUCTIONS ===
+_summary_template = """=== TASK INSTRUCTIONS ===
 You will be given a document or multiple documents containted in <DocX> tags, X will be a UUID. \
 The X indicates the document number. Docs can be of numerous formats and topics. \
 Some will be informational, some communications, some policy, some data. \
@@ -29,7 +29,7 @@ This is so that the user can understand your responses.\
 {text} \
 """
 
-SPOTLIGHT_SUMMARY_TASK_PROMPT = PromptTemplate.from_template(_core_redbox_prompt + _spotlight_summary_template)
+SUMMARY_TASK_PROMPT = PromptTemplate.from_template(_core_redbox_prompt + _summary_template)
 
 # ==================== KEY PEOPLE ====================
 
@@ -61,7 +61,7 @@ Do not include any of the above examples in your response. \
 {text} \
 """
 
-SPOTLIGHT_KEY_PEOPLE_TASK_PROMPT = PromptTemplate.from_template(_core_redbox_prompt + _key_people_template)
+SUMMARY_KEY_PEOPLE_TASK_PROMPT = PromptTemplate.from_template(_core_redbox_prompt + _key_people_template)
 
 # ==================== KEY ACTIONS ====================
 
@@ -99,7 +99,7 @@ Do not include any of the above examples in your response. \
 {text} \
 """
 
-SPOTLIGHT_KEY_ACTIONS_TASK_PROMPT = PromptTemplate.from_template(_core_redbox_prompt + _key_actions_template)
+SUMMARY_KEY_ACTIONS_TASK_PROMPT = PromptTemplate.from_template(_core_redbox_prompt + _key_actions_template)
 
 # ==================== KEY DATES ====================
 
@@ -134,7 +134,7 @@ Do not include any of the above examples in your response. \
 {text} \
 """
 
-SPOTLIGHT_KEY_DATES_TASK_PROMPT = PromptTemplate.from_template(_core_redbox_prompt + _key_dates_prompt)
+SUMMARY_KEY_DATES_TASK_PROMPT = PromptTemplate.from_template(_core_redbox_prompt + _key_dates_prompt)
 
 # ==================== KEY DISCUSSION ====================
 
@@ -168,11 +168,11 @@ Do not include any of the above examples in your response. \
 {text} \
 """
 
-SPOTLIGHT_KEY_DISCUSSION_TASK_PROMPT = PromptTemplate.from_template(_core_redbox_prompt + _key_discussion_prompt)
+SUMMARY_KEY_DISCUSSION_TASK_PROMPT = PromptTemplate.from_template(_core_redbox_prompt + _key_discussion_prompt)
 
-# ==================== SPOTLIGHT COMBINATION ====================
+# ==================== SUMMARY COMBINATION ====================
 
-_spotlight_combination_prompt = """=== TASK INSTRUCTIONS ===
+_summary_combination_prompt = """=== TASK INSTRUCTIONS ===
 You will be be given multiple summaries of Documents. \
 Combine them into a single summary matching the style that they were given to you. \
 Respond with a markdown formatted summary of the text. \
@@ -183,11 +183,11 @@ If a task output is corroborated by multiple summaries, be sure to tag any sourc
 mentioned in the summaries. \
 (e.g. "Z spoke at a press conference today... <DocX> <DocY>"). \
 X and Y will be UUIDs of the source documents. \
-DO NOT cite the summaries/spotlights themselves as sources. \
+DO NOT cite the summaries/summarys themselves as sources. \
 Only cite the source documents which will always have the <DocX> format. \
 DO NOT INCLUDE the example string "<DocX>" TAGS IN YOUR RESPONSE. \
 
 {text} \
 """
 
-SPOTLIGHT_COMBINATION_TASK_PROMPT = PromptTemplate.from_template(_core_redbox_prompt + _spotlight_combination_prompt)
+SUMMARY_COMBINATION_TASK_PROMPT = PromptTemplate.from_template(_core_redbox_prompt + _summary_combination_prompt)
