@@ -11,8 +11,8 @@ services:
       context: .
       dockerfile: ./streamlit_app/Dockerfile
       args:
-        - EMBEDDING_MODEL=${EMBEDDING_MODEL:-}
-        - EMBEDDING_MODEL_PATH=${EMBEDDING_MODEL_PATH}
+        - EMBEDDING_MODEL=${EMBEDDING_MODEL}
+        - SENTENCE_TRANSFORMERS_HOME=${SENTENCE_TRANSFORMERS_HOME}
     env_file:
       - .env
     ports:

@@ -4,14 +4,14 @@ import logging
 from pathlib import Path
 
 from langchain_community.chat_models import ChatLiteLLM
-from langchain_community.embeddings import SentenceTransformerEmbeddings
-from langchain.vectorstores.elasticsearch import ApproxRetrievalStrategy, ElasticsearchStore
+
+from langchain_elasticsearch import ElasticsearchStore
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
 from redbox.definitions import BackendAdapter
 from redbox.models.file import UploadFile, ContentType
 from redbox.storage.elasticsearch import ElasticsearchStorageHandler
 from redbox.parsing.file_chunker import FileChunker
-from redbox.model_db import SentenceTransformerDB
 from redbox.models import File, Settings, Chunk, FileStatus, Tag
 from redbox.llm.llm_base import LLMHandler
 
@@ -27,12 +27,13 @@ class LocalBackendAdapter(BackendAdapter):
         # Storage
         self._es = self._settings.elasticsearch_client()
         self._storage_handler = ElasticsearchStorageHandler(es_client=self._es, root_index="redbox-data")
-        self._s3 = self._settings.s3_client()
-        self._file_publisher = FileChunker(
-            embedding_model=SentenceTransformerDB(self._settings.embedding_model, self._settings.embedding_model_path),
-            s3_client=self._s3,
-            bucket_name=self._settings.bucket_name
+        self._embedding_model = HuggingFaceEmbeddings(
+            model_name=self._settings.embedding_model,
+            model_kwargs={"device": "cpu"},
+            cache_folder=self._settings.sentence_transformers_home,
         )
+        self._file_publisher = FileChunker(embedding_model=self._embedding_model)
+        self._s3 = self._settings.s3_client()
 
         # LLM
         self._llm: Optional[ChatLiteLLM] = None
@@ -45,8 +46,10 @@ class LocalBackendAdapter(BackendAdapter):
     def _set_uuid(self, user_uuid: UUID) -> None:
         self._user_uuid = user_uuid
 
-    # region FILES ====================
-    def create_file(self, file: UploadFile) -> File:
+    def get_supported_file_types(self) -> list[str]:
+        return self._file_publisher.supported_file_types
+
+    def add_file(self, file: UploadFile) -> File:
         assert self._llm_handler is not None
         assert self._llm is not None
         assert self._user_uuid is not None
@@ -103,7 +106,7 @@ class LocalBackendAdapter(BackendAdapter):
 
     def get_file(self, file_uuid: UUID) -> File:
         return self._storage_handler.read_item(file_uuid, model_type="File")
-    
+
     def get_files(self, file_uuids: list[UUID]) -> list[File]:
         return self._storage_handler.read_items(file_uuids, model_type="File")
 
@@ -141,7 +144,7 @@ class LocalBackendAdapter(BackendAdapter):
     def get_file_status(self, file_uuid: UUID) -> FileStatus:
         status = self._storage_handler.get_file_status(file_uuid)
         return status
-    
+
     def get_supported_file_types(self) -> list[str]:
         return self._file_publisher.supported_file_types
 
@@ -190,8 +193,6 @@ class LocalBackendAdapter(BackendAdapter):
         )  # type: ignore[call-arg]
         # A meta, private argument hasn't been typed properly in LangChain
 
-        embedding_function = SentenceTransformerEmbeddings()
-
         hybrid = False
         if self._settings.elastic.subscription_level in ("platinum", "enterprise"):
             hybrid = True
@@ -199,8 +200,8 @@ class LocalBackendAdapter(BackendAdapter):
         vector_store = ElasticsearchStore(
             index_name="redbox-vector",
             es_connection=self._es,
-            embedding=embedding_function,
-            strategy=ApproxRetrievalStrategy(hybrid=hybrid),
+            strategy=ElasticsearchStore.ApproxRetrievalStrategy(hybrid=hybrid),
+            embedding=self._embedding_model,
         )
 
         self._llm_handler = LLMHandler(
@@ -208,6 +209,6 @@ class LocalBackendAdapter(BackendAdapter):
             user_uuid=str(self._user_uuid),
             vector_store=vector_store,
         )
-    
+
     def simple_chat(self, chat_history: Sequence[dict]) -> TextIO:
         pass

@@ -1,7 +1,6 @@
-from sentence_transformers import SentenceTransformer
+from langchain_core.embeddings.embeddings import Embeddings
 
 from redbox.models.file import Chunk, ContentType, File
-from redbox.models.settings import Settings
 from redbox.parsing.chunk_clustering import cluster_chunks
 from redbox.parsing.chunkers import other_chunker
 from botocore.client import BaseClient
@@ -10,7 +9,7 @@ from botocore.client import BaseClient
 class FileChunker:
     """A class to wrap unstructured and generate compliant chunks from files"""
 
-    def __init__(self, s3_client: BaseClient, bucket_name: str, embedding_model: SentenceTransformer = None):
+    def __init__(self, s3_client: BaseClient, bucket_name: str, embedding_model: Embeddings = None):
         self.supported_file_types = [content_type.value for content_type in ContentType]
         self.embedding_model = embedding_model
         self.s3_client = s3_client

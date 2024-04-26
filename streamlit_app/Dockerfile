@@ -19,9 +19,9 @@ RUN \
     --with streamlit-app,ai \
     --without dev
 
-FROM python:3.11-buster as embeddings
+FROM python:3.11-slim-buster as embeddings
 ARG EMBEDDING_MODEL
-ARG EMBEDDING_MODEL_PATH
+ARG SENTENCE_TRANSFORMERS_HOME
 
 WORKDIR /app/
 
@@ -31,10 +31,9 @@ ENV VIRTUAL_ENV=/app/.venv \
 COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 
 RUN python -c "from sentence_transformers import SentenceTransformer; \
-    SentenceTransformer('${EMBEDDING_MODEL}', cache_folder='${EMBEDDING_MODEL_PATH}');"
+    SentenceTransformer('${EMBEDDING_MODEL}', cache_folder='${SENTENCE_TRANSFORMERS_HOME}');"
 
-FROM python:3.11-slim-buster as runtime
-ARG EMBEDDING_MODEL_PATH
+FROM embeddings as runtime
 
 RUN apt-get update
 RUN apt-get install -y libgl-dev libmagic-dev inetutils-ping poppler-utils tesseract-ocr
@@ -45,7 +44,6 @@ ENV VIRTUAL_ENV=/app/.venv \
     PATH="/app/.venv/bin:$PATH"
 
 COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
-COPY --from=embeddings ${EMBEDDING_MODEL_PATH} ${EMBEDDING_MODEL_PATH}
 
 ADD redbox/ /app/redbox
 ADD streamlit_app/ /app/streamlit_app
