@@ -140,7 +140,7 @@ if "tag_title" in url_params:
     tag_title = url_params["tag_title"]
     tag = st.session_state.storage_handler.read_item(item_uuid=uuid.UUID(tag_title), model_type="Tag")
 
-    files_from_url = [uuid.UUID(x) for x in tag.files]
+    files_from_url = [uuid.UUID(x) for x in tag.files if isinstance(x, str)]
     files_from_url = [x for x in files_from_url if x in parsed_files_uuid_map.keys()]
 
 summary_file_select = st.multiselect(

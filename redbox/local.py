@@ -128,6 +128,9 @@ class LocalBackendAdapter(BackendAdapter):
 
     def get_file(self, file_uuid: UUID) -> File:
         return self._storage_handler.read_item(file_uuid, model_type="File")
+    
+    def get_files(self, file_uuids: list[UUID]) -> list[File]:
+        return self._storage_handler.read_items(file_uuids, model_type="File")
 
     def list_files(self) -> Sequence[File]:
         files = self._storage_handler.read_all_items(model_type="File")

@@ -555,8 +555,3 @@ def get_persona_prompt(persona_name) -> str | None:
         persona_name (str): Persona name selected by user.
     """
     return next(chat_persona.prompt for chat_persona in chat_personas if chat_persona.name == persona_name)
-
-
-def get_files_by_uuid(file_uuids: list[uuid.UUID]) -> list[File]:
-    files = st.session_state.storage_handler.read_items(file_uuids, "File")
-    return files
