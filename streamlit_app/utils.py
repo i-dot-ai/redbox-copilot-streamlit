@@ -17,14 +17,9 @@ from langchain.callbacks import FileCallbackHandler
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains.base import Chain
 from langchain.schema.output import LLMResult
-from langchain_elasticsearch import ElasticsearchStore
-from langchain_community.chat_models import ChatLiteLLM
-from langchain_community.embeddings import SentenceTransformerEmbeddings
 from loguru import logger
 from lxml.html.clean import Cleaner
 
-from redbox.llm.llm_base import LLMHandler
-from redbox.model_db import SentenceTransformerDB
 from redbox.models import Settings
 from redbox.models.feedback import Feedback
 from redbox.models.file import File
@@ -131,12 +126,6 @@ def init_session_state() -> dict:
 
     if "available_personas" not in st.session_state:
         st.session_state.available_personas = get_persona_names()
-
-    if "model_db" not in st.session_state:
-        st.session_state.model_db = SentenceTransformerDB(env.embedding_model, env.embedding_model_path)
-
-    if "embedding_model" not in st.session_state:
-        st.session_state.embedding_model = st.session_state.model_db
 
     if "BUCKET_NAME" not in st.session_state:
         st.session_state.BUCKET_NAME = ENV["BUCKET_NAME"]
@@ -309,35 +298,14 @@ def load_llm_handler(ENV, update=False) -> None:
 
     """
 
-    st.session_state.llm = ChatLiteLLM(
-        model=st.session_state.model_select,
-        max_tokens=st.session_state.model_params["max_tokens"],
-        temperature=st.session_state.model_params["temperature"],
-        streaming=True,
-    )  # type: ignore[call-arg]
-    # A meta, private argument hasn't been typed properly in LangChain
-
     if "llm_handler" not in st.session_state or update:
-        embedding_function = SentenceTransformerEmbeddings()
-
-        hybrid = False
-        if ENV["ELASTIC__SUBSCRIPTION_LEVEL"].lower() in ("platinum", "enterprise"):
-            hybrid = True
-
-        vector_store = ElasticsearchStore(
-            es_url=f"{ENV['ELASTIC__SCHEME']}://{ENV['ELASTIC__HOST']}:{ENV['ELASTIC__PORT']}",
-            es_user=ENV["ELASTIC__USER"],
-            es_password=ENV["ELASTIC__PASSWORD"],
-            index_name="redbox-vector",
-            embedding=embedding_function,
-            strategy=ElasticsearchStore.ApproxRetrievalStrategy(hybrid=hybrid),
+        st.session_state.backend._set_llm(
+            model=st.session_state.model_select,
+            max_tokens=st.session_state.model_params["max_tokens"],
+            temperature=st.session_state.model_params["temperature"],
         )
 
-        st.session_state.llm_handler = LLMHandler(
-            llm=st.session_state.llm,
-            user_uuid=st.session_state.user_uuid,
-            vector_store=vector_store,
-        )
+        st.session_state.llm_handler = st.session_state.backend._llm_handler
 
 
 def hash_list_of_files(list_of_files: list[File]) -> str:
@@ -587,8 +555,3 @@ def get_persona_prompt(persona_name) -> str | None:
         persona_name (str): Persona name selected by user.
     """
     return next(chat_persona.prompt for chat_persona in chat_personas if chat_persona.name == persona_name)
-
-
-def get_files_by_uuid(file_uuids: list[uuid.UUID]) -> list[File]:
-    files = st.session_state.storage_handler.read_items(file_uuids, "File")
-    return files

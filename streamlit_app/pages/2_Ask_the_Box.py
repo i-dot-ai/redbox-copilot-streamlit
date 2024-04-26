@@ -10,7 +10,6 @@ from redbox.llm.prompts.core import CORE_REDBOX_PROMPT
 from redbox.models.chat import ChatMessage
 from streamlit_app.utils import (
     StreamlitStreamHandler,
-    get_files_by_uuid,
     init_session_state,
     load_llm_handler,
     replace_doc_ref,
@@ -86,7 +85,9 @@ def render_citation_response(response):
         for chunk in response["input_documents"]
     ]
     cited_chunks = set(cited_chunks)
-    cited_files = get_files_by_uuid([uuid.UUID(x[0]) for x in cited_chunks])
+    cited_files = st.session_state.backend.get_files(
+        file_uuids=[uuid.UUID(x[0]) for x in cited_chunks]
+    )
     page_numbers = [x[2] for x in cited_chunks]
 
     for j, page_number in enumerate(page_numbers):
