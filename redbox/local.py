@@ -4,14 +4,13 @@ import logging
 from pathlib import Path
 
 from langchain_community.chat_models import ChatLiteLLM
-from langchain_community.embeddings import SentenceTransformerEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores.elasticsearch import ApproxRetrievalStrategy, ElasticsearchStore
 
 from redbox.definitions import BackendAdapter
 from redbox.models.file import UploadFile, ContentType
 from redbox.storage.elasticsearch import ElasticsearchStorageHandler
 from redbox.parsing.file_chunker import FileChunker
-from redbox.model_db import SentenceTransformerDB
 from redbox.models import File, Settings, Chunk, FileStatus, Tag
 from redbox.llm.llm_base import LLMHandler
 
@@ -27,9 +26,12 @@ class LocalBackendAdapter(BackendAdapter):
         # Storage
         self._es = self._settings.elasticsearch_client()
         self._storage_handler = ElasticsearchStorageHandler(es_client=self._es, root_index="redbox-data")
-        self._file_publisher = FileChunker(
-            embedding_model=SentenceTransformerDB(self._settings.embedding_model, self._settings.embedding_model_path)
+        self._embedding_model = HuggingFaceEmbeddings(
+            model_name=self._settings.embedding_model,
+            model_kwargs={"device": "cpu"},
+            cache_folder=self._settings.sentence_transformers_home,
         )
+        self._file_publisher = FileChunker(embedding_model=self._embedding_model)
         self._s3 = self._settings.s3_client()
 
         # LLM
@@ -51,8 +53,6 @@ class LocalBackendAdapter(BackendAdapter):
         )  # type: ignore[call-arg]
         # A meta, private argument hasn't been typed properly in LangChain
 
-        embedding_function = SentenceTransformerEmbeddings()
-
         hybrid = False
         if self._settings.elastic.subscription_level in ("platinum", "enterprise"):
             hybrid = True
@@ -60,7 +60,7 @@ class LocalBackendAdapter(BackendAdapter):
         vector_store = ElasticsearchStore(
             index_name="redbox-vector",
             es_connection=self._es,
-            embedding=embedding_function,
+            embedding=self._embedding_model,
             strategy=ApproxRetrievalStrategy(hybrid=hybrid),
         )
 
@@ -158,6 +158,9 @@ class LocalBackendAdapter(BackendAdapter):
     def get_file_status(self, file_uuid: UUID) -> FileStatus:
         status = self._storage_handler.get_file_status(file_uuid)
         return status
+    
+    def get_supported_file_types(self) -> list[str]:
+        return self._file_publisher.supported_file_types 
 
     def list_tags(self) -> Sequence[Tag]:
         tags = self._storage_handler.read_all_items(model_type="Tag")

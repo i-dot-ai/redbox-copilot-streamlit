@@ -8,10 +8,7 @@ from langchain.chains.combine_documents.stuff import StuffDocumentsChain
 from langchain.chains.llm import LLMChain
 from langchain.chains.qa_with_sources import load_qa_with_sources_chain
 from langchain.memory import ConversationBufferMemory
-from langchain_community.embeddings import (
-    HuggingFaceEmbeddings,
-    SentenceTransformerEmbeddings,
-)
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
 from redbox.llm.prompts.chat import (
     CONDENSE_QUESTION_PROMPT,
@@ -53,19 +50,11 @@ class LLMHandler(object):
         self.llm = llm
         self.user_uuid = user_uuid
 
-        self.embedding_function = embedding_function or self._create_embedding_function()
+        self.embedding_function = embedding_function
 
         self.vector_store = vector_store
 
         self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-
-    def _create_embedding_function(self) -> SentenceTransformerEmbeddings:
-        """Initialises our vectorisation method.
-
-        Returns:
-            SentenceTransformerEmbeddings: object to run text embedding
-        """
-        return SentenceTransformerEmbeddings()
 
     def add_chunks_to_vector_store(self, chunks: list[Chunk]) -> None:
         """Takes a list of Chunks and embedds them into the vector store
