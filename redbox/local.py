@@ -4,8 +4,9 @@ import logging
 from pathlib import Path
 
 from langchain_community.chat_models import ChatLiteLLM
+
+from langchain_elasticsearch import ElasticsearchStore
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores.elasticsearch import ApproxRetrievalStrategy, ElasticsearchStore
 
 from redbox.definitions import BackendAdapter
 from redbox.models.file import UploadFile, ContentType
@@ -60,8 +61,8 @@ class LocalBackendAdapter(BackendAdapter):
         vector_store = ElasticsearchStore(
             index_name="redbox-vector",
             es_connection=self._es,
+            strategy=ElasticsearchStore.ApproxRetrievalStrategy(hybrid=hybrid),
             embedding=self._embedding_model,
-            strategy=ApproxRetrievalStrategy(hybrid=hybrid),
         )
 
         self._llm_handler = LLMHandler(
