@@ -1,4 +1,4 @@
-import uuid
+from uuid import UUID
 
 import streamlit as st
 
@@ -7,7 +7,7 @@ from streamlit_app.utils import FilePreview, init_session_state
 st.set_page_config(page_title="Redbox Copilot - Preview Files", page_icon="📮", layout="wide")
 
 ENV = init_session_state()
-file_preview = FilePreview()
+file_preview = FilePreview(backend=st.session_state.backend)
 
 
 if "file_uuid_to_name_map" not in st.session_state:
@@ -30,7 +30,8 @@ url_params = st.query_params.to_dict()
 
 select_index = 0
 if "file_uuid" in url_params:
-    select_index = st.session_state.file_uuid_to_name_map.keys().index(uuid.UUID(url_params["file_uuid"]))
+    select_index = list(st.session_state.file_uuid_to_name_map.keys()).index(UUID(url_params["file_uuid"]))
+
 
 file_select = st.selectbox(
     label="File",

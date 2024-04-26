@@ -7,12 +7,16 @@ data/
 db/
 !*/user_preferences/classes_format.json
 !*/user_preferences/classes_subject.json
+!redbox/tests/data
 
 # npm package files
 
 node_modules/
 package-lock.json
 yarn.lock
+
+# MacOS
+.DS_Store
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

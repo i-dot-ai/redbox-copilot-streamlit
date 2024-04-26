@@ -1,6 +1,7 @@
 from typing import Literal, Optional
 
 import boto3
+from botocore.client import BaseClient
 from botocore.exceptions import ClientError
 from elasticsearch import Elasticsearch
 from pydantic import BaseModel
@@ -28,6 +29,8 @@ class ElasticCloudSettings(BaseModel):
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_nested_delimiter="__")
+    
     anthropic_api_key: Optional[str] = None
     openai_api_key: Optional[str] = None
 
@@ -74,8 +77,6 @@ class Settings(BaseSettings):
     core_api_host: str = "http://core-api"
     core_api_port: int = 5002
 
-    model_config = SettingsConfigDict(env_file=".env", env_nested_delimiter="__")
-
     def elasticsearch_client(self) -> Elasticsearch:
         if isinstance(self.elastic, ElasticLocalSettings):
             es = Elasticsearch(
@@ -93,7 +94,7 @@ class Settings(BaseSettings):
         es = Elasticsearch(cloud_id=self.elastic.cloud_id, api_key=self.elastic.api_key)
         return es
 
-    def s3_client(self):
+    def s3_client(self) -> BaseClient:
         if self.object_store == "minio":
             client = boto3.client(
                 "s3",
