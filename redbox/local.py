@@ -5,7 +5,7 @@ from pathlib import Path
 
 from langchain_community.chat_models import ChatLiteLLM
 from langchain_community.embeddings import SentenceTransformerEmbeddings
-from langchain.vectorstores.elasticsearch import ApproxRetrievalStrategy, ElasticsearchStore
+from langchain_elasticsearch import ElasticsearchStore
 
 from redbox.definitions import BackendAdapter
 from redbox.models.file import UploadFile, ContentType
@@ -61,7 +61,7 @@ class LocalBackendAdapter(BackendAdapter):
             index_name="redbox-vector",
             es_connection=self._es,
             embedding=embedding_function,
-            strategy=ApproxRetrievalStrategy(hybrid=hybrid),
+            strategy=ElasticsearchStore.ApproxRetrievalStrategy(hybrid=hybrid),
         )
 
         self._llm_handler = LLMHandler(

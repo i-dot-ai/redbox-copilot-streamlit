@@ -17,7 +17,7 @@ from langchain.callbacks import FileCallbackHandler
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains.base import Chain
 from langchain.schema.output import LLMResult
-from langchain.vectorstores.elasticsearch import ApproxRetrievalStrategy, ElasticsearchStore
+from langchain_elasticsearch import ElasticsearchStore
 from langchain_community.chat_models import ChatLiteLLM
 from langchain_community.embeddings import SentenceTransformerEmbeddings
 from loguru import logger
@@ -330,7 +330,7 @@ def load_llm_handler(ENV, update=False) -> None:
             es_password=ENV["ELASTIC__PASSWORD"],
             index_name="redbox-vector",
             embedding=embedding_function,
-            strategy=ApproxRetrievalStrategy(hybrid=hybrid),
+            strategy=ElasticsearchStore.ApproxRetrievalStrategy(hybrid=hybrid),
         )
 
         st.session_state.llm_handler = LLMHandler(
