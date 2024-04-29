@@ -148,7 +148,7 @@ class ElasticsearchStorageHandler(BaseStorageHandler):
             for item in scan(
                 client=self.es_client,
                 index=target_index,
-                query={"query": {"match": {"parent_file_uuid": str(parent_file_uuid)}}},
+                query={"query": {"match_phrase": {"parent_file_uuid": str(parent_file_uuid)}}},
             )
         ]
         return res
@@ -161,7 +161,7 @@ class ElasticsearchStorageHandler(BaseStorageHandler):
             for x in scan(
                 client=self.es_client,
                 index=target_index,
-                query={"query": {"match": {"parent_file_uuid": str(parent_file_uuid)}}},
+                query={"query": {"match_phrase": {"parent_file_uuid": str(parent_file_uuid)}}},
                 _source=False,
             )
         ]
@@ -179,7 +179,7 @@ class ElasticsearchStorageHandler(BaseStorageHandler):
                     "query": {
                         "bool": {
                             "must": [
-                                {"match": {"parent_file_uuid": str(parent_file_uuid)}},
+                                {"match_phrase": {"parent_file_uuid": str(parent_file_uuid)}},
                                 {"exists": {"field": "embedding"}},
                             ]
                         }
