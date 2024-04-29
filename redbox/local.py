@@ -149,11 +149,12 @@ class LocalBackendAdapter(BackendAdapter):
         return self._file_publisher.supported_file_types
 
     # region TAGS ====================
-    def list_tags(self) -> Sequence[Tag]:
-        tags = self._storage_handler.read_all_items(model_type="Tag")
-        assert all(isinstance(tag, Tag) for tag in tags)
+    def create_tag(self, name: str) -> Tag:
+        assert self._user_uuid is not None
 
-        return tags
+        tag = Tag(name=name, files=set(), creator_user_uuid=self._user_uuid)
+        self._storage_handler.write_item(item=tag)
+        return tag
 
     def get_tag(self, tag_uuid: UUID) -> Tag:
         return self._storage_handler.read_item(item_uuid=tag_uuid, model_type="Tag")
@@ -171,12 +172,11 @@ class LocalBackendAdapter(BackendAdapter):
         self._storage_handler.update_item(item=tag)
         return tag
 
-    def create_tag(self, name: str) -> Tag:
-        assert self._user_uuid is not None
+    def list_tags(self) -> Sequence[Tag]:
+        tags = self._storage_handler.read_all_items(model_type="Tag")
+        assert all(isinstance(tag, Tag) for tag in tags)
 
-        tag = Tag(name=name, files=set(), creator_user_uuid=self._user_uuid)
-        self._storage_handler.write_item(item=tag)
-        return tag
+        return tags
 
     def delete_tag(self, tag_uuid: UUID) -> Tag:
         tag = self.get_tag(tag_uuid=tag_uuid)

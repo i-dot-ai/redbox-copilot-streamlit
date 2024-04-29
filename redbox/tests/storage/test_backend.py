@@ -8,12 +8,12 @@ import pytest
 
 from elasticsearch import NotFoundError
 
-from redbox.models import UploadFile, ContentType, File
+from redbox.models import UploadFile, ContentType, File, Tag
 from redbox.tests.conftest import TEST_DATA, YieldFixture
 from redbox.local import LocalBackendAdapter
 from redbox.definitions import BackendAdapter
 
-DOCS = [Path(*x.parts[-2:]) for x in (TEST_DATA / "docs").glob("*.txt")]
+DOCS = [Path(*x.parts[-2:]) for x in (TEST_DATA / "docs").glob("*.*")]
 ADAPTERS = [LocalBackendAdapter]
 
 
@@ -23,6 +23,7 @@ class TestFiles:
 
     file: Optional[File] = None
     files: Optional[list[File]] = []
+    tag: Optional[Tag] = None
 
     @pytest.fixture(params=ADAPTERS)
     def backend(self, request, settings) -> YieldFixture[BackendAdapter]:
@@ -87,13 +88,44 @@ class TestFiles:
         chunks = backend.get_file_chunks(file_uuid=self.file.uuid)
         assert len(chunks) > 0
 
-    def test_delete_file(self, backend):
-        file = backend.delete_file(file_uuid=self.file.uuid)
-        time.sleep(3)
-        assert file.uuid not in [f.uuid for f in backend.list_files()]
+    def test_create_tag(self, backend):
+        tag = backend.create_tag(name="TestTag")
+        assert isinstance(tag, Tag)
+        TestFiles.tag = tag
 
-        chunks = backend.get_file_chunks(file_uuid=file.uuid)
+    def test_get_tag(self, backend):
+        tag = backend.get_tag(tag_uuid=self.tag.uuid)
+        assert isinstance(tag, Tag)
+
+    def test_add_files_to_tag(self, backend):
+        _ = backend.add_files_to_tag(file_uuids=[self.file.uuid], tag_uuid=self.tag.uuid)
+        time.sleep(1)
+
+        tag = backend.get_tag(tag_uuid=self.tag.uuid)
+        assert {self.file.uuid} <= tag.files
+
+    def test_remove_files_from_tag(self, backend):
+        _ = backend.remove_files_from_tag(file_uuids=[self.file.uuid], tag_uuid=self.tag.uuid)
+        time.sleep(1)
+
+        tag = backend.get_tag(tag_uuid=self.tag.uuid)
+        assert not ({self.file.uuid} <= tag.files)
+
+    def test_list_tags(self, backend):
+        assert self.tag in backend.list_tags()
+
+    def test_delete_tag(self, backend):
+        _ = backend.delete_tag(tag_uuid=self.tag.uuid)
+        time.sleep(1)
+        assert self.tag not in backend.list_tags()
+
+    def test_delete_file(self, backend):
+        _ = backend.delete_file(file_uuid=self.file.uuid)
+        time.sleep(1)
+        assert self.file not in backend.list_files()
+
+        chunks = backend.get_file_chunks(file_uuid=self.file.uuid)
         assert len(chunks) == 0
 
         with pytest.raises(NotFoundError):
-            _ = backend.get_object(file_uuid=file.uuid)
+            _ = backend.get_object(file_uuid=self.file.uuid)
