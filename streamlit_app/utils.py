@@ -28,8 +28,6 @@ from redbox.storage import ElasticsearchStorageHandler
 from redbox.local import LocalBackendAdapter
 from redbox.definitions import BackendAdapter
 
-env = Settings()
-
 DEV_UUID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
 
 
@@ -186,7 +184,7 @@ def init_session_state() -> dict:
         _model_params = {"max_tokens": 4096, "temperature": 0.2}
 
     if "backend" not in st.session_state:
-        st.session_state.backend = LocalBackendAdapter(settings=env)
+        st.session_state.backend = LocalBackendAdapter(settings=Settings())
         st.session_state.backend._set_uuid(user_uuid=st.session_state.user_uuid)
         st.session_state.backend._set_llm(
             model=st.session_state.model_select,

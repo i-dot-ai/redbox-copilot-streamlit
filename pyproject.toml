@@ -36,7 +36,8 @@ markers = [
     "incremental: marks tests as incremental (deselect with '-m \"not incremental\"')",
 ]
 filterwarnings = [
-    "ignore::DeprecationWarning:pydantic.*:"
+    "ignore::DeprecationWarning:pydantic.*",
+    "ignore::DeprecationWarning:pydantic_core.*"
 ]
 env_override_existing_values = 1
 env_files = [

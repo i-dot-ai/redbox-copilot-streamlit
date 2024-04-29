@@ -27,13 +27,15 @@ class LocalBackendAdapter(BackendAdapter):
         # Storage
         self._es = self._settings.elasticsearch_client()
         self._storage_handler = ElasticsearchStorageHandler(es_client=self._es, root_index="redbox-data")
+        self._s3 = self._settings.s3_client()
         self._embedding_model = HuggingFaceEmbeddings(
             model_name=self._settings.embedding_model,
             model_kwargs={"device": "cpu"},
             cache_folder=self._settings.sentence_transformers_home,
         )
-        self._file_publisher = FileChunker(embedding_model=self._embedding_model)
-        self._s3 = self._settings.s3_client()
+        self._file_publisher = FileChunker(
+            embedding_model=self._embedding_model, s3_client=self._s3, bucket_name=self._settings.bucket_name
+        )
 
         # LLM
         self._llm: Optional[ChatLiteLLM] = None
@@ -46,10 +48,8 @@ class LocalBackendAdapter(BackendAdapter):
     def _set_uuid(self, user_uuid: UUID) -> None:
         self._user_uuid = user_uuid
 
-    def get_supported_file_types(self) -> list[str]:
-        return self._file_publisher.supported_file_types
-
-    def add_file(self, file: UploadFile) -> File:
+    # region FILES ====================
+    def create_file(self, file: UploadFile) -> File:
         assert self._llm_handler is not None
         assert self._llm is not None
         assert self._user_uuid is not None
