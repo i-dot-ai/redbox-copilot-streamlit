@@ -125,7 +125,7 @@ def init_session_state() -> dict:
             preferred_language="British English",
         )
 
-        st.session_state.backend._set_llm(
+        st.session_state.backend.set_llm(
             model=st.session_state.model_select,
             max_tokens=st.session_state.model_params["max_tokens"],
             temperature=st.session_state.model_params["temperature"],
@@ -272,13 +272,13 @@ def load_llm_handler(ENV, update=False) -> None:
     """
 
     if "llm_handler" not in st.session_state or update:
-        st.session_state.backend._set_llm(
+        st.session_state.backend.set_llm(
             model=st.session_state.model_select,
             max_tokens=st.session_state.model_params["max_tokens"],
             temperature=st.session_state.model_params["temperature"],
         )
 
-        st.session_state.llm_handler = st.session_state.backend._llm_handler
+        st.session_state.llm_handler = st.session_state.backend._llm
 
 
 def hash_list_of_files(list_of_files: list[File]) -> str:
@@ -579,7 +579,7 @@ def format_feedback_kwargs(chat_history: list[ChatResponse], user_uuid: UUID, n:
 
 
 def change_selected_model() -> None:
-    st.session_state.backend._set_llm(
+    st.session_state.backend.set_llm(
         model=st.session_state.model_select,
         max_tokens=st.session_state.model_params["max_tokens"],
         temperature=st.session_state.model_params["temperature"],

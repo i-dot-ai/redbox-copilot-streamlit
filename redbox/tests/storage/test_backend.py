@@ -38,7 +38,7 @@ class TestFiles:
             preferred_language="British English",
         )
 
-        backend._set_llm(
+        backend.set_llm(
             model="openai/gpt-3.5-turbo",
             max_tokens=1024,
             temperature=0.2,
@@ -158,7 +158,7 @@ class TestLLM:
             preferred_language="British English",
         )
 
-        backend._set_llm(
+        backend.set_llm(
             model="openai/gpt-3.5-turbo",
             max_tokens=1024,
             temperature=0.2,
@@ -199,6 +199,16 @@ class TestLLM:
         user_returned = backend.get_user()
 
         assert user_sent == user_returned
+
+    def test_get_set_llm(self, backend):
+        llm_sent = backend.set_llm(
+            model="mistral/mistral-tiny",
+            max_tokens=1_000,
+            temperature=0.1,
+        )
+        llm_returned = backend.get_llm()
+
+        assert llm_sent == llm_returned
 
     def test_create_feedback(self, backend):
         test_source = {

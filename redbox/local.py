@@ -51,8 +51,7 @@ class LocalBackendAdapter(BackendAdapter):
         )
 
         # LLM
-        self._llm: Optional[ChatLiteLLM] = None
-        self._llm_handler: Optional[LLMHandler] = None
+        self._llm: Optional[LLMHandler] = None
 
         # User
         self._user: Optional[User] = None
@@ -63,7 +62,6 @@ class LocalBackendAdapter(BackendAdapter):
         """Reports the current state of set variables."""
         return {
             "llm": self._llm is not None,
-            "llm_handler": self._llm_handler is not None,
             "user": self._user is not None,
             "file_publisher": self._file_publisher is not None,
             "elastic_client": self._es is not None,
@@ -96,7 +94,6 @@ class LocalBackendAdapter(BackendAdapter):
 
     # region FILES ====================
     def create_file(self, file: UploadFile) -> File:
-        assert self._llm_handler is not None
         assert self._llm is not None
         assert self._user is not None
 
@@ -145,7 +142,7 @@ class LocalBackendAdapter(BackendAdapter):
         # Index
         LOG.info(f"Indexing {file.uuid}")
 
-        self._llm_handler.add_chunks_to_vector_store(chunks=chunks)
+        self._llm.add_chunks_to_vector_store(chunks=chunks)
 
         LOG.info(f"{file.uuid} complete!")
 
@@ -236,8 +233,8 @@ class LocalBackendAdapter(BackendAdapter):
         return tag
 
     # region LLM ====================
-    def _set_llm(self, model: str, max_tokens: int, temperature: int) -> None:
-        self._llm = ChatLiteLLM(
+    def set_llm(self, model: str, max_tokens: int, temperature: int) -> LLMHandler:
+        llm = ChatLiteLLM(
             model=model,
             max_tokens=max_tokens,
             temperature=temperature,
@@ -256,11 +253,16 @@ class LocalBackendAdapter(BackendAdapter):
             embedding=self._embedding_model,
         )
 
-        self._llm_handler = LLMHandler(
-            llm=self._llm,
+        self._llm = LLMHandler(
+            llm=llm,
             user_uuid=str(self.get_user().uuid),
             vector_store=vector_store,
         )
+
+        return self._llm
+
+    def get_llm(self) -> LLMHandler:
+        return self._llm
 
     def simple_chat(self, chat_history: Sequence[dict]) -> TextIO:
         pass
@@ -279,7 +281,7 @@ class LocalBackendAdapter(BackendAdapter):
             "preffered_language": "British English",
         }
 
-        response, _ = self._llm_handler.chat_with_rag(
+        response, _ = self._llm.chat_with_rag(
             user_question=question.text,
             user_info=user_info,
             chat_history=formatted_history,
