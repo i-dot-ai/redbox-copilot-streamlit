@@ -64,8 +64,7 @@ def cluster_chunks(
             chunks_in = list(compress(chunks, out_clusters == clust))
             # if there is only one chunk in the cluster, just use it
             if len(chunks_in) == 1:
-                new_chunk = chunks_in[0]
-                new_chunk.index = i
+                new_chunk = Chunk(**{k: v for k, v in chunks_in[0].model_dump().items() if k != "index"}, index=i)
             else:
                 # if there are multiple chunks in the cluster, merge them
                 new_chunk = Chunk(

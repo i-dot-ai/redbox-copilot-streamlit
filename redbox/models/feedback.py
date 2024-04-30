@@ -2,7 +2,7 @@ from typing import Optional
 
 from langchain.chains.base import Chain
 from langchain_core.documents.base import Document
-from pydantic import field_serializer
+from pydantic import field_serializer, field_validator
 
 from redbox.models.base import PersistableModel
 
@@ -20,6 +20,20 @@ class Feedback(PersistableModel):
     feedback_score: str
     feedback_text: Optional[str] = None
 
+    @field_validator("sources")
+    @classmethod
+    def is_document(cls, v: list[Document]) -> list[Document]:
+        """Custom validator for using Pydantic v1 object in model."""
+        doc_list: list[Document] = []
+        for doc in v:
+            if not isinstance(doc, Document):
+                doc_list.append(Document(**doc))
+            else:
+                doc_list.append(v)
+
+        assert all(isinstance(doc, Document) for doc in doc_list)
+        return doc_list
+
     @field_serializer("chain")
     def serialise_chain(self, chain: Chain, _info):
         if isinstance(chain, Chain):
@@ -29,17 +43,4 @@ class Feedback(PersistableModel):
 
     @field_serializer("sources")
     def serialise_doc(self, sources: list[Document], _info):
-        serialisable: list[dict] = []
-
-        if isinstance(sources, Document):
-            serialisable.append(sources.dict())
-        elif isinstance(sources, list):
-            for doc in sources:
-                if isinstance(doc, Document):
-                    serialisable.append(doc.dict())
-                else:
-                    serialisable.append(doc)
-        else:
-            serialisable = sources
-
-        return serialisable
+        return [source.dict() for source in sources]
