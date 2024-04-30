@@ -2,6 +2,7 @@ from uuid import UUID
 from typing import TextIO, Sequence, Optional, Callable
 import logging
 from pathlib import Path
+import urllib.parse
 
 from langchain_community.chat_models import ChatLiteLLM
 
@@ -73,7 +74,8 @@ class LocalBackendAdapter(BackendAdapter):
         )
 
         # Strip off the query string (we don't need the keys)
-        simple_s3_url = authenticated_s3_url.split("?")[0]
+        authenticated_s3_url_parsed = urllib.parse.urlparse(authenticated_s3_url)
+        simple_s3_url = urllib.parse.urljoin(authenticated_s3_url, authenticated_s3_url_parsed.path)
 
         LOG.info(f"Uploaded file to {simple_s3_url}")
 
@@ -218,7 +220,7 @@ class LocalBackendAdapter(BackendAdapter):
     def simple_chat(self, chat_history: Sequence[dict]) -> TextIO:
         pass
 
-    def rag_chat(self, chat_request: ChatRequest, callbacks: list[Callable]) -> ChatResponse:
+    def rag_chat(self, chat_request: ChatRequest, callbacks: Optional[list[Callable]] = None) -> ChatResponse:
         *previous_history, question = chat_request.message_history
 
         formatted_history = "\n".join([f"{msg.role}: {msg.text}" for msg in previous_history])

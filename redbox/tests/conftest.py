@@ -51,8 +51,7 @@ def pytest_runtest_setup(item):
 
 @pytest.fixture(scope="session")
 def settings() -> YieldFixture[Settings]:
-    settings = Settings(_env_file=Path(ROOT, ".env.test"), _env_file_encoding="utf-8")
-    assert Path(ROOT, ".env.test").exists()
+    settings = Settings()
     assert settings.minio_host == "localhost"
     yield settings
 
