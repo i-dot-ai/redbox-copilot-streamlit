@@ -38,23 +38,21 @@ persona_name = st.sidebar.selectbox(
 description = get_persona_description(persona_name)
 st.sidebar.write(description)
 
-user_info = st.session_state.user_info
-
 INITIAL_CHAT_PROMPT = [
     ChatMessage(
         chain=None,
         message=SystemMessage(
             content=CORE_REDBOX_PROMPT.format(
                 current_date=date.today().isoformat(),
-                user_info=user_info,
+                user_info=st.session_state.backend.get_user().str_llm(),
             )
         ),
-        creator_user_uuid=st.session_state.user_uuid,
+        creator_user_uuid=st.session_state.backend.get_user().uuid,
     ),
     ChatMessage(
         chain=None,
         message=AIMessage(content="Hi, I'm Redbox Copilot. How can I help you?"),
-        creator_user_uuid=st.session_state.user_uuid,
+        creator_user_uuid=st.session_state.backend.get_user().uuid,
     ),
 ]
 
@@ -114,7 +112,7 @@ st.sidebar.download_button(
         indent=4,
         ensure_ascii=False,
     ),
-    file_name=(f"redboxai_conversation_{st.session_state.user_uuid}" f"_{now_formatted}.json"),
+    file_name=(f"redboxai_conversation_{st.session_state.backend.get_user().uuid}" f"_{now_formatted}.json"),
 )
 
 message_count = len(st.session_state.messages)
@@ -141,7 +139,7 @@ for i, chat_response in enumerate(st.session_state.messages):
                 "input": [msg.message.content for msg in st.session_state.messages],
                 "chain": st.session_state.messages[i].chain,
                 "output": st.session_state.messages[i].message.content,
-                "creator_user_uuid": st.session_state.user_uuid,
+                "creator_user_uuid": st.session_state.backend.get_user().uuidd,
             },
         )
 
@@ -151,7 +149,7 @@ if prompt := st.chat_input():
         ChatMessage(
             chain=None,
             message=HumanMessage(content=prompt),
-            creator_user_uuid=st.session_state.user_uuid,
+            creator_user_uuid=st.session_state.backend.get_user().uuid,
         )
     )
     st.chat_message("user", avatar=avatar_map["user"]).write(prompt)
@@ -161,7 +159,7 @@ if prompt := st.chat_input():
 
         response, chain = st.session_state.llm_handler.chat_with_rag(
             user_question=prompt,
-            user_info=st.session_state.user_info,
+            user_info=st.session_state.backend.get_user().str_llm(),
             chat_history=st.session_state.messages,
             callbacks=[
                 StreamlitStreamHandler(text_element=response_stream_text, initial_text=""),
@@ -178,7 +176,7 @@ if prompt := st.chat_input():
         ChatMessage(
             chain=chain,
             message=AIMessage(content=response["output_text"]),
-            creator_user_uuid=st.session_state.user_uuid,
+            creator_user_uuid=st.session_state.backend.get_user().uuid,
         )
     )
 
@@ -189,7 +187,7 @@ if prompt := st.chat_input():
             "input": [msg.message.content for msg in st.session_state.messages],
             "chain": chain,
             "output": st.session_state.messages[-1].message.content,
-            "creator_user_uuid": st.session_state.user_uuid,
+            "creator_user_uuid": st.session_state.backend.get_user().uuid,
         },
     )
 
