@@ -1,5 +1,5 @@
 from uuid import UUID
-from typing import TextIO, Sequence, Optional
+from typing import TextIO, Sequence, Optional, Callable
 import logging
 from pathlib import Path
 
@@ -12,11 +12,11 @@ from redbox.definitions import BackendAdapter
 from redbox.models.file import UploadFile, ContentType
 from redbox.storage.elasticsearch import ElasticsearchStorageHandler
 from redbox.parsing.file_chunker import FileChunker
-from redbox.models import File, Settings, Chunk, FileStatus, Tag
+from redbox.models import File, Settings, Chunk, FileStatus, Tag, ChatRequest, ChatResponse, ChatMessage, Feedback
 from redbox.llm.llm_base import LLMHandler
 
 logging.basicConfig(level=logging.INFO)
-log = logging.getLogger()
+LOG = logging.getLogger()
 
 
 class LocalBackendAdapter(BackendAdapter):
@@ -55,7 +55,7 @@ class LocalBackendAdapter(BackendAdapter):
         assert self._user_uuid is not None
 
         # Upload
-        log.info(f"Uploading {file.uuid}")
+        LOG.info(f"Uploading {file.uuid}")
 
         file_type = Path(file.filename).suffix
 
@@ -75,7 +75,7 @@ class LocalBackendAdapter(BackendAdapter):
         # Strip off the query string (we don't need the keys)
         simple_s3_url = authenticated_s3_url.split("?")[0]
 
-        log.info(f"Uploaded file to {simple_s3_url}")
+        LOG.info(f"Uploaded file to {simple_s3_url}")
 
         file_uploaded = File(
             url=simple_s3_url,
@@ -85,22 +85,22 @@ class LocalBackendAdapter(BackendAdapter):
         )
 
         # Chunk
-        log.info(f"Chunking {file.uuid}")
+        LOG.info(f"Chunking {file.uuid}")
 
         chunks = self._file_publisher.chunk_file(file_uploaded)
 
         # Save
-        log.info(f"Saving {file.uuid}")
+        LOG.info(f"Saving {file.uuid}")
 
         self._storage_handler.write_item(file_uploaded)
         self._storage_handler.write_items(chunks)
 
         # Index
-        log.info(f"Indexing {file.uuid}")
+        LOG.info(f"Indexing {file.uuid}")
 
         self._llm_handler.add_chunks_to_vector_store(chunks=chunks)
 
-        log.info(f"{file.uuid} complete!")
+        LOG.info(f"{file.uuid} complete!")
 
         return file_uploaded
 
@@ -137,7 +137,7 @@ class LocalBackendAdapter(BackendAdapter):
         return file
 
     def get_file_chunks(self, file_uuid: UUID) -> Sequence[Chunk]:
-        log.info(f"getting chunks for file {file_uuid}")
+        LOG.info(f"getting chunks for file {file_uuid}")
         chunks = self._storage_handler.get_file_chunks(file_uuid)
         return chunks
 
@@ -147,6 +147,11 @@ class LocalBackendAdapter(BackendAdapter):
 
     def get_supported_file_types(self) -> list[str]:
         return self._file_publisher.supported_file_types
+
+    # region FEEDBACK ====================
+    def create_feedback(self, feedback: Feedback) -> Feedback:
+        self._storage_handler.write_item(feedback)
+        return feedback
 
     # region TAGS ====================
     def create_tag(self, name: str) -> Tag:
@@ -212,3 +217,28 @@ class LocalBackendAdapter(BackendAdapter):
 
     def simple_chat(self, chat_history: Sequence[dict]) -> TextIO:
         pass
+
+    def rag_chat(self, chat_request: ChatRequest, callbacks: list[Callable]) -> ChatResponse:
+        *previous_history, question = chat_request.message_history
+
+        formatted_history = "\n".join([f"{msg.role}: {msg.text}" for msg in previous_history])
+
+        # TODO: Add user info get/set
+        user_info = {
+            "name": "",
+            "email": "",
+            "department": "Cabinet Office",
+            "role": "Civil Servant",
+            "preffered_language": "British English",
+        }
+
+        response, _ = self._llm_handler.chat_with_rag(
+            user_question=question.text,
+            user_info=user_info,
+            chat_history=formatted_history,
+            callbacks=callbacks,
+        )
+
+        return ChatResponse(
+            response_message=ChatMessage(role="ai", text=response["output_text"]), sources=response["input_documents"]
+        )

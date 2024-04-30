@@ -1,10 +1,11 @@
 import base64
 import hashlib
 import os
-import uuid
+from uuid import UUID, uuid4
 from datetime import datetime
 from io import BytesIO
 from typing import Optional
+import json
 
 import boto3
 import dotenv
@@ -17,10 +18,12 @@ from langchain.callbacks import FileCallbackHandler
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains.base import Chain
 from langchain.schema.output import LLMResult
+from langchain_core.documents.base import Document
 from loguru import logger
 from lxml.html.clean import Cleaner
 
 from redbox.models import Settings
+from redbox.models.chat import ChatMessage, ChatMessageSourced, ChatResponse, ChatSource
 from redbox.models.feedback import Feedback
 from redbox.models.file import File
 from redbox.models.persona import ChatPersona
@@ -472,7 +475,7 @@ def eval_csv_to_squad_json(csv_path: str, json_path: str) -> None:
         json_path (str): The path to the json file
     """
     df = pd.read_csv(csv_path)
-    df["uuid"] = df.apply(lambda _: uuid.uuid4(), axis=1)
+    df["uuid"] = df.apply(lambda _: uuid4(), axis=1)
     (
         df.rename(dict(answer="ground_truth_answer", document="document_name"), axis=1)
         .set_index("uuid")
@@ -484,28 +487,31 @@ def submit_feedback(
     feedback: dict,
     input: str | list[str],
     output: str,
+    sources: list,
     creator_user_uuid: str,
     chain: Optional[Chain] = None,
 ) -> None:
     """Submits feedback to the storage handler
-
     Args:
         feedback (Dict): A dictionary containing the feedback
         input (Union[str, List[str]]): Input text from the user
         output (str): The output text from the LLM
+        sources (list): The sources that were used
         creator_user_uuid (str): The uuid of the user who created the feedback
         chain (Optional[Chain], optional): The chain used to generate the output. Defaults to None.
     """
-    to_write = Feedback(
+    feedback = Feedback(
         input=input,
         chain=chain,
         output=output,
+        sources=sources,
         feedback_type=feedback["type"],
         feedback_score=feedback["score"],
         feedback_text=feedback["text"],
-        creator_user_uuid=uuid.UUID(creator_user_uuid),
+        creator_user_uuid=creator_user_uuid,
     )
-    st.session_state.storage_handler.write_item(to_write)
+
+    st.session_state.backend.create_feedback(feedback=feedback)
 
     st.toast("Thanks for your feedback!", icon="🙏")
 
@@ -554,3 +560,57 @@ def get_persona_prompt(persona_name) -> str | None:
         persona_name (str): Persona name selected by user.
     """
     return next(chat_persona.prompt for chat_persona in chat_personas if chat_persona.name == persona_name)
+
+
+def get_document_citation_assets(document: Document) -> set[tuple[File, Optional[list[int]], str]]:
+    """Takes a Document and returns a tuple of its File, page numbers and URL."""
+    file = st.session_state.backend.get_file(UUID(document.metadata["parent_doc_uuid"]))
+
+    page_numbers = None
+    if "page_numbers" in document.metadata:
+        page_numbers = tuple(json.loads(document.metadata["page_numbers"]))
+
+    if page_numbers is None:
+        url = get_file_link(file=file)
+    else:
+        for page in page_numbers:
+            url = get_file_link(file=file, page=page)
+
+    return file, page_numbers, url
+
+
+def response_to_message(response: ChatResponse) -> ChatMessage | ChatMessageSourced:
+    sources: list[ChatSource] = []
+    if response.sources is not None:
+        for source in response.sources:
+            sources.append(ChatSource(document=source, html=get_document_citation_assets(source)[2]))
+        return ChatMessageSourced(**response.response_message.model_dump(), sources=sources)
+    else:
+        return response.response_message
+
+
+def format_feedback_kwargs(chat_history: list[ChatResponse], user_uuid: UUID, n: int = -1) -> dict:
+    """Formats feedback kwarg dict based on a chat history."""
+    previous_history = chat_history[0:n]
+    current = chat_history[n]
+
+    sources = None
+    if hasattr(current, "sources"):
+        sources = [source.document.dict() for source in current.sources]
+
+    return {
+        "input": [msg.text for msg in previous_history],
+        "chain": previous_history,
+        "output": current.text,
+        "sources": sources,
+        "creator_user_uuid": user_uuid,
+    }
+
+
+def change_selected_model() -> None:
+    st.session_state.backend._set_llm(
+        model=st.session_state.model_select,
+        max_tokens=st.session_state.model_params["max_tokens"],
+        temperature=st.session_state.model_params["temperature"],
+    )
+    st.toast(f"Loaded {st.session_state.model_select}")

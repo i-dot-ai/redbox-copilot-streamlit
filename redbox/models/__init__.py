@@ -1,4 +1,4 @@
-from redbox.models.chat import ChatMessage
+from redbox.models.chat import ChatMessage, ChatRequest, ChatResponse, ChatMessageSourced, ChatSource
 from redbox.models.tag import Tag
 from redbox.models.feedback import Feedback
 from redbox.models.file import (
@@ -27,6 +27,10 @@ from redbox.models.summary import (
 
 __all__ = [
     "ChatMessage",
+    "ChatRequest",
+    "ChatResponse",
+    "ChatMessageSourced",
+    "ChatSource",
     "ChatPersona",
     "Chunk",
     "ChunkStatus",
