@@ -26,8 +26,7 @@ from redbox.models.file import File
 from redbox.models.persona import ChatPersona
 from redbox.storage import ElasticsearchStorageHandler
 from redbox.local import LocalBackendAdapter
-
-env = Settings()
+from redbox.definitions import BackendAdapter
 
 DEV_UUID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
 
@@ -185,7 +184,7 @@ def init_session_state() -> dict:
         _model_params = {"max_tokens": 4096, "temperature": 0.2}
 
     if "backend" not in st.session_state:
-        st.session_state.backend = LocalBackendAdapter(settings=env)
+        st.session_state.backend = LocalBackendAdapter(settings=Settings())
         st.session_state.backend._set_uuid(user_uuid=st.session_state.user_uuid)
         st.session_state.backend._set_llm(
             model=st.session_state.model_select,
@@ -345,9 +344,10 @@ class StreamlitStreamHandler(BaseCallbackHandler):
 class FilePreview(object):
     """Class for rendering files to streamlit UI"""
 
-    def __init__(self):
+    def __init__(self, backend: BackendAdapter):
         self.cleaner = Cleaner()
         self.cleaner.javascript = True
+        self.backend = backend
 
         self.render_methods = {
             ".pdf": self._render_pdf,
@@ -367,13 +367,12 @@ class FilePreview(object):
         """
 
         render_method = self.render_methods[file.content_type]
-        stream = st.session_state.s3_client.get_object(Bucket=st.session_state.BUCKET_NAME, Key=file.name)
-        file_bytes = stream["Body"].read()
+        file_bytes = self.backend.get_object(file_uuid=file.uuid)
         render_method(file, file_bytes)
 
     def _render_pdf(self, file: File, page_number: Optional[int] = None) -> None:
-        stream = st.session_state.s3_client.get_object(Bucket=st.session_state.BUCKET_NAME, Key=file.name)
-        base64_pdf = base64.b64encode(stream["Body"].read()).decode("utf-8")
+        file_bytes = self.backend.get_object(file_uuid=file.uuid)
+        base64_pdf = base64.b64encode(file_bytes).decode("utf-8")
 
         if page_number is not None:
             iframe = f"""<iframe

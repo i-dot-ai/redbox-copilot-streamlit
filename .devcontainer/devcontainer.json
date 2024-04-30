@@ -1,6 +1,6 @@
 {
   "image": "python:3.11-buster",
-  "postCreateCommand": "apt update && apt install libgl-dev libmagic-dev -y && chmod 777 data/elastic && poetry install",
+  "postCreateCommand": "apt update && apt install libgl-dev libmagic-dev poppler-utils tesseract-ocr -y && chmod 777 data/elastic && poetry install",
   "name": "redbox-streamlit-dev",
   "features": {
     "ghcr.io/devcontainers-contrib/features/poetry:2": {},
@@ -23,7 +23,8 @@
     8501,
     5601,
     9200,
-    9001
+    9001,
+    9000
   ],
   "customizations": {
     "vscode": {

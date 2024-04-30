@@ -30,6 +30,20 @@ known_first_party = ["utils"]
 [tool.deptry.per_rule_ignores]
 DEP002 = ["torch", "torchvision"]
 
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "incremental: marks tests as incremental (deselect with '-m \"not incremental\"')",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning:pydantic.*",
+    "ignore::DeprecationWarning:pydantic_core.*"
+]
+env_override_existing_values = 1
+env_files = [
+    ".env.test"
+]
+
 [tool.poetry]
 name = "redbox"
 version = "1.0.0"
@@ -79,6 +93,7 @@ moto = {extras = ["s3"], version = "^5.0.5"}
 types-requests = "^2.31.0.20240406"
 deptry = "^0.16.1"
 types-redis = "^4.6.0.20240409"
+pytest-dotenv = "^0.5.2"
 
 [tool.poetry.group.ai.dependencies]
 anthropic = "^0.25.1"

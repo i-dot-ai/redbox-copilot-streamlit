@@ -65,7 +65,7 @@ if submitted and uploaded_files is not None:  # noqa: C901
                 file=uploaded_file,
             )
 
-            file = st.session_state.backend.add_file(file_to_upload)
+            file = st.session_state.backend.create_file(file_to_upload)
             files.append(file)
 
         st.toast(body=f"{file.name} Complete")

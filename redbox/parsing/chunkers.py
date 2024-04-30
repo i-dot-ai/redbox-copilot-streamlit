@@ -1,16 +1,14 @@
 from unstructured.chunking.title import chunk_by_title
 from unstructured.partition.auto import partition
 
-from redbox.models import Chunk, File, Settings
-
-env = Settings()
-s3_client = env.s3_client()
+from redbox.models import Chunk, File
+from botocore.client import BaseClient
 
 
-def other_chunker(file: File) -> list[Chunk]:
+def other_chunker(file: File, s3_client: BaseClient, bucket_name: str) -> list[Chunk]:
     authenticated_s3_url = s3_client.generate_presigned_url(
         "get_object",
-        Params={"Bucket": env.bucket_name, "Key": file.name},
+        Params={"Bucket": bucket_name, "Key": file.name},
         ExpiresIn=3600,
     )
 

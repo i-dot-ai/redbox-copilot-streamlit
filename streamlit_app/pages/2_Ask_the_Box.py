@@ -85,9 +85,7 @@ def render_citation_response(response):
         for chunk in response["input_documents"]
     ]
     cited_chunks = set(cited_chunks)
-    cited_files = st.session_state.backend.get_files(
-        file_uuids=[uuid.UUID(x[0]) for x in cited_chunks]
-    )
+    cited_files = st.session_state.backend.get_files(file_uuids=[uuid.UUID(x[0]) for x in cited_chunks])
     page_numbers = [x[2] for x in cited_chunks]
 
     for j, page_number in enumerate(page_numbers):
