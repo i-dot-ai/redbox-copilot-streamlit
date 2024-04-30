@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, Field, computed_field, field_validator
 
 
-class PersistableModel(BaseModel):
+class PersistableModel(BaseModel, frozen=True):
     uuid: UUID = Field(default_factory=uuid4)
     created_datetime: datetime = Field(default_factory=datetime.now)
     creator_user_uuid: Optional[UUID] = None

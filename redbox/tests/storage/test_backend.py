@@ -8,7 +8,7 @@ import pytest
 
 from elasticsearch import NotFoundError
 
-from redbox.models import UploadFile, ContentType, File, Tag
+from redbox.models import UploadFile, ContentType, File, Tag, ChatRequest, ChatResponse, Feedback
 from redbox.tests.conftest import TEST_DATA, YieldFixture
 from redbox.local import LocalBackendAdapter
 from redbox.definitions import BackendAdapter
@@ -129,3 +129,88 @@ class TestFiles:
 
         with pytest.raises(NotFoundError):
             _ = backend.get_object(file_uuid=self.file.uuid)
+
+
+@pytest.mark.incremental
+class TestLLM:
+    """Tests LLM calls for a backend."""
+
+    @pytest.fixture(params=ADAPTERS)
+    def backend(self, request, settings) -> YieldFixture[BackendAdapter]:
+        backend = request.param(settings=settings)
+        backend._set_uuid(user_uuid=UUID("bd65600d-8669-4903-8a14-af88203add38"))
+        backend._set_llm(
+            model="openai/gpt-3.5-turbo",
+            max_tokens=1024,
+            temperature=0.2,
+        )
+        yield backend
+
+        "What does Mr. Aneurin Bevan think of the national health insurance system"
+
+    @pytest.fixture
+    def file(self, backend) -> YieldFixture[File]:
+        full_path = Path(TEST_DATA / "docs/NATIONAL HEALTH SERVICE BILL.txt")
+        sanitised_name = full_path.name.replace("'", "_")
+        file_type = full_path.suffix
+
+        with open(full_path, "rb") as f:
+            to_upload = UploadFile(
+                content_type=ContentType(file_type),
+                filename=sanitised_name,
+                creator_user_uuid=UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                file=BytesIO(f.read()),
+            )
+
+        file = backend.create_file(file=to_upload)
+
+        yield file
+
+        _ = backend.delete_file(file_uuid=file.uuid)
+
+    def test_create_feedback(self, backend):
+        test_source = {
+            "page_content": "Lorem ipsum dolor sit amet.",
+            "metadata": {
+                "url": "http://gov.uk/",
+                "is_continuation": True,
+                "languages": '["eng"]',
+                "orig_elements": "",
+                "parent_doc_uuid": "c3a0984d-c2b2-41a6-aee1-0d4d04503000",
+                "filetype": "text/plain",
+                "uuid": "bfbf8098-aeb7-4b09-9022-95c415c2b82e",
+                "parent_file_uuid": "c3a0984d-c2b2-41a6-aee1-0d4d04503000",
+                "index": 23,
+                "created_datetime": "2024-04-29T15:25:06.545568",
+                "token_count": 203,
+                "text_hash": "946428d39d737f0c750e1a3ff9f6120b",
+            },
+            "type": "Document",
+        }
+
+        feedback = Feedback(
+            input="Foo",
+            chain=[{"role": "user", "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit."}],
+            output="Bar",
+            sources=[test_source for _ in range(3)],
+            feedback_type="thumbs",
+            feedback_score="👍",
+            feedback_text="Baz",
+            creator_user_uuid=UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+        )
+
+        given = backend.create_feedback(feedback=feedback)
+
+        assert isinstance(given, Feedback)
+
+    def test_rag_chat(self, backend):
+        request = ChatRequest(
+            message_history=[
+                {"role": "user", "text": "What does Mr. Aneurin Bevan think of the national health insurance system"}
+            ]
+        )
+        response = backend.rag_chat(chat_request=request)
+
+        assert isinstance(response, ChatResponse)
+        assert len(response.response_message.text) > 0
+        assert len(response.sources) > 0
