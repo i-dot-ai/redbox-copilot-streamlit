@@ -24,6 +24,7 @@ from redbox.models.summary import (
     SummaryTask,
     SummaryTaskComplete,
 )
+from redbox.models.user import User
 
 __all__ = [
     "ChatMessage",
@@ -50,4 +51,5 @@ __all__ = [
     "EmbedQueueItem",
     "StatusResponse",
     "ProcessingStatusEnum",
+    "User",
 ]

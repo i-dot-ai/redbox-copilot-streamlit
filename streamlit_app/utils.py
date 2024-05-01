@@ -22,44 +22,21 @@ from langchain_core.documents.base import Document
 from loguru import logger
 from lxml.html.clean import Cleaner
 
-from redbox.models import Settings
-from redbox.models.chat import ChatMessage, ChatMessageSourced, ChatResponse, ChatSource
-from redbox.models.feedback import Feedback
-from redbox.models.file import File
-from redbox.models.persona import ChatPersona
+from redbox.models import (
+    Settings,
+    ChatMessage,
+    ChatMessageSourced,
+    ChatResponse,
+    ChatSource,
+    Feedback,
+    File,
+    ChatPersona,
+)
 from redbox.storage import ElasticsearchStorageHandler
 from redbox.local import LocalBackendAdapter
 from redbox.definitions import BackendAdapter
 
 DEV_UUID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
-
-
-def get_user_name(principal: dict) -> str:
-    """Get the user name from the principal object
-
-    Args:
-        principal (dict): the principal object
-
-    Returns:
-        str: the user name
-
-    """
-    for obj in principal["claims"]:
-        if obj["typ"] == "name":
-            return obj["val"]
-    return ""
-
-
-def populate_user_info() -> dict:
-    """Populate the user information
-
-    Args:
-        ENV (dict): the environment variables dictionary
-
-    Returns:
-        dict: the user information dictionary
-    """
-    return {"name": DEV_UUID, "email": "dev@example.com"}
 
 
 def init_session_state() -> dict:
@@ -91,23 +68,6 @@ def init_session_state() -> dict:
         unsafe_allow_html=True,
     )
 
-    if "user_details" not in st.session_state:
-        st.session_state["user_details"] = populate_user_info()
-
-    if "user_uuid" not in st.session_state:
-        st.session_state.user_uuid = st.session_state["user_details"]["name"]
-
-    if "s3_client" not in st.session_state:
-        if ENV["OBJECT_STORE"] == "minio":
-            st.session_state.s3_client = boto3.client(
-                "s3",
-                endpoint_url=f"http://{ENV['MINIO_HOST']}:9000",
-                aws_access_key_id=ENV["MINIO_ACCESS_KEY"],
-                aws_secret_access_key=ENV["MINIO_SECRET_KEY"],
-            )
-        elif ENV["OBJECT_STORE"] == "s3":
-            raise NotImplementedError("S3 not yet implemented")
-
     if "available_models" not in st.session_state:
         st.session_state.available_models = []
 
@@ -125,6 +85,62 @@ def init_session_state() -> dict:
 
     if "model_select" not in st.session_state:
         st.session_state.model_select = st.session_state.available_models[0]
+
+    if ENV["DEV_MODE"]:
+        st.sidebar.info("**DEV MODE**")
+        with st.sidebar.expander("⚙️ DEV Settings", expanded=False):
+            st.session_state.model_params = {
+                # TODO: This shoudld be dynamic to the model
+                "max_tokens": st.number_input(
+                    label="max_tokens",
+                    min_value=0,
+                    max_value=100_000,
+                    value=1024,
+                    step=1,
+                ),
+                "temperature": st.slider(
+                    label="temperature",
+                    min_value=0.0,
+                    max_value=1.0,
+                    value=0.2,
+                    step=0.01,
+                ),
+            }
+            reload_llm = st.button(label="♻️ Reload LLM and LLMHandler")
+            if reload_llm:
+                load_llm_handler(ENV=ENV)
+
+            if st.button(label="Empty Streamlit Cache"):
+                st.cache_data.clear()
+
+    if "backend" not in st.session_state:
+        st.session_state.backend = LocalBackendAdapter(settings=Settings())
+
+        st.session_state.backend.set_user(
+            uuid=DEV_UUID,
+            name="",
+            email="",
+            department="Cabinet Office",
+            role="Civil Servant",
+            preferred_language="British English",
+        )
+
+        st.session_state.backend.set_llm(
+            model=st.session_state.model_select,
+            max_tokens=st.session_state.model_params["max_tokens"],
+            temperature=st.session_state.model_params["temperature"],
+        )
+
+    if "s3_client" not in st.session_state:
+        if ENV["OBJECT_STORE"] == "minio":
+            st.session_state.s3_client = boto3.client(
+                "s3",
+                endpoint_url=f"http://{ENV['MINIO_HOST']}:9000",
+                aws_access_key_id=ENV["MINIO_ACCESS_KEY"],
+                aws_secret_access_key=ENV["MINIO_SECRET_KEY"],
+            )
+        elif ENV["OBJECT_STORE"] == "s3":
+            raise NotImplementedError("S3 not yet implemented")
 
     if "available_personas" not in st.session_state:
         st.session_state.available_personas = get_persona_names()
@@ -156,44 +172,8 @@ def init_session_state() -> dict:
         )
         st.session_state.storage_handler = ElasticsearchStorageHandler(es_client=es, root_index="redbox-data")
 
-    if st.session_state.user_uuid == DEV_UUID:
-        st.sidebar.info("**DEV MODE**")
-        with st.sidebar.expander("⚙️ DEV Settings", expanded=False):
-            st.session_state.model_params = {
-                # TODO: This shoudld be dynamic to the model
-                "max_tokens": st.number_input(
-                    label="max_tokens",
-                    min_value=0,
-                    max_value=100_000,
-                    value=1024,
-                    step=1,
-                ),
-                "temperature": st.slider(
-                    label="temperature",
-                    min_value=0.0,
-                    max_value=1.0,
-                    value=0.2,
-                    step=0.01,
-                ),
-            }
-            reload_llm = st.button(label="♻️ Reload LLM and LLMHandler")
-            if reload_llm:
-                load_llm_handler(ENV=ENV)
-
-            if st.button(label="Empty Streamlit Cache"):
-                st.cache_data.clear()
-
     else:
         _model_params = {"max_tokens": 4096, "temperature": 0.2}
-
-    if "backend" not in st.session_state:
-        st.session_state.backend = LocalBackendAdapter(settings=Settings())
-        st.session_state.backend._set_uuid(user_uuid=st.session_state.user_uuid)
-        st.session_state.backend._set_llm(
-            model=st.session_state.model_select,
-            max_tokens=st.session_state.model_params["max_tokens"],
-            temperature=st.session_state.model_params["temperature"],
-        )
 
     if "llm" not in st.session_state or "llm_handler" not in st.session_state:
         load_llm_handler(
@@ -209,15 +189,6 @@ def init_session_state() -> dict:
         )
         logger.add(logfile, colorize=True, enqueue=True)
         st.session_state.llm_logger_callback = FileCallbackHandler(logfile)
-
-    if "user_info" not in st.session_state:
-        st.session_state.user_info = {
-            "name": "",
-            "email": "",
-            "department": "Cabinet Office",
-            "role": "Civil Servant",
-            "preffered_language": "British English",
-        }
 
     if "summary" not in st.session_state:
         st.session_state.summary = []
@@ -301,13 +272,13 @@ def load_llm_handler(ENV, update=False) -> None:
     """
 
     if "llm_handler" not in st.session_state or update:
-        st.session_state.backend._set_llm(
+        st.session_state.backend.set_llm(
             model=st.session_state.model_select,
             max_tokens=st.session_state.model_params["max_tokens"],
             temperature=st.session_state.model_params["temperature"],
         )
 
-        st.session_state.llm_handler = st.session_state.backend._llm_handler
+        st.session_state.llm_handler = st.session_state.backend._llm
 
 
 def hash_list_of_files(list_of_files: list[File]) -> str:
@@ -608,7 +579,7 @@ def format_feedback_kwargs(chat_history: list[ChatResponse], user_uuid: UUID, n:
 
 
 def change_selected_model() -> None:
-    st.session_state.backend._set_llm(
+    st.session_state.backend.set_llm(
         model=st.session_state.model_select,
         max_tokens=st.session_state.model_params["max_tokens"],
         temperature=st.session_state.model_params["temperature"],

@@ -1,5 +1,5 @@
 from io import BytesIO
-from uuid import UUID
+from uuid import UUID, uuid4
 from pathlib import Path
 from typing import Optional
 import time
@@ -28,12 +28,22 @@ class TestFiles:
     @pytest.fixture(params=ADAPTERS)
     def backend(self, request, settings) -> YieldFixture[BackendAdapter]:
         backend = request.param(settings=settings)
-        backend._set_uuid(user_uuid=UUID("bd65600d-8669-4903-8a14-af88203add38"))
-        backend._set_llm(
+
+        _ = backend.set_user(
+            uuid=UUID("bd65600d-8669-4903-8a14-af88203add38"),
+            name="Foo Bar",
+            email="foo.bar@gov.uk",
+            department="Cabinet Office",
+            role="Civil Servant",
+            preferred_language="British English",
+        )
+
+        backend.set_llm(
             model="openai/gpt-3.5-turbo",
             max_tokens=1024,
             temperature=0.2,
         )
+
         yield backend
 
     @pytest.fixture(params=DOCS)
@@ -138,8 +148,17 @@ class TestLLM:
     @pytest.fixture(params=ADAPTERS)
     def backend(self, request, settings) -> YieldFixture[BackendAdapter]:
         backend = request.param(settings=settings)
-        backend._set_uuid(user_uuid=UUID("bd65600d-8669-4903-8a14-af88203add38"))
-        backend._set_llm(
+
+        _ = backend.set_user(
+            uuid=UUID("bd65600d-8669-4903-8a14-af88203add38"),
+            name="Foo Bar",
+            email="foo.bar@gov.uk",
+            department="Cabinet Office",
+            role="Civil Servant",
+            preferred_language="British English",
+        )
+
+        backend.set_llm(
             model="openai/gpt-3.5-turbo",
             max_tokens=1024,
             temperature=0.2,
@@ -167,6 +186,29 @@ class TestLLM:
         yield file
 
         _ = backend.delete_file(file_uuid=file.uuid)
+
+    def test_get_set_user(self, backend):
+        user_sent = backend.set_user(
+            uuid=uuid4(),
+            name="Foo Bar",
+            email="foo.bar@gov.uk",
+            department="Cabinet Office",
+            role="Civil Servant",
+            preferred_language="British English",
+        )
+        user_returned = backend.get_user()
+
+        assert user_sent == user_returned
+
+    def test_get_set_llm(self, backend):
+        llm_sent = backend.set_llm(
+            model="mistral/mistral-tiny",
+            max_tokens=1_000,
+            temperature=0.1,
+        )
+        llm_returned = backend.get_llm()
+
+        assert llm_sent == llm_returned
 
     def test_create_feedback(self, backend):
         test_source = {

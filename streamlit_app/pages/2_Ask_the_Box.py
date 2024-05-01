@@ -21,7 +21,6 @@ st.set_page_config(page_title="Redbox Copilot - Ask the Box", page_icon="📮", 
 
 with st.spinner("Loading..."):
     ENV = init_session_state()
-    USER = st.session_state.user_info
     AVATAR_MAP = {"human": "🧑‍💻", "ai": "📮", "user": "🧑‍💻", "assistant": "📮"}
     FEEDBACK_KWARGS = {
         "feedback_type": "thumbs",
@@ -33,7 +32,7 @@ with st.spinner("Loading..."):
             role="system",
             text=CORE_REDBOX_PROMPT.format(
                 current_date=date.today().isoformat(),
-                user_info=USER,
+                user_info=st.session_state.backend.get_user().str_llm(),
             ),
         ),
         ChatMessage(
@@ -77,7 +76,7 @@ with st.sidebar:
             ensure_ascii=False,
         ),
         file_name=(
-            f"redboxai_conversation_{st.session_state.backend._user_uuid}"
+            f"redboxai_conversation_{st.session_state.backend.get_user().uuid}"
             f"_{datetime.now().isoformat().replace('.', '_')}.json"
         ),
     )
@@ -100,7 +99,7 @@ for i, msg in enumerate(st.session_state.messages):
             **FEEDBACK_KWARGS,
             key=f"feedback_{i}",
             kwargs=format_feedback_kwargs(
-                chat_history=st.session_state.messages, n=i, user_uuid=st.session_state.backend._user_uuid
+                chat_history=st.session_state.messages, n=i, user_uuid=st.session_state.backend.get_user().uuid
             ),
         )
 
@@ -136,6 +135,6 @@ if prompt := st.chat_input():
         **FEEDBACK_KWARGS,
         key=f"feedback_{len(st.session_state.messages) - 1}",
         kwargs=format_feedback_kwargs(
-            chat_history=st.session_state.messages, user_uuid=st.session_state.backend._user_uuid
+            chat_history=st.session_state.messages, user_uuid=st.session_state.backend.get_user().uuid
         ),
     )

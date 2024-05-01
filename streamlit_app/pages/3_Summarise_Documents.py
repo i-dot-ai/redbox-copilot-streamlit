@@ -6,7 +6,7 @@ import streamlit as st
 from streamlit_feedback import streamlit_feedback
 
 from redbox.export.docx import summary_complete_to_docx
-from redbox.models.summary import SummaryComplete, SummaryTaskComplete
+from redbox.models import SummaryComplete, SummaryTaskComplete, File
 from streamlit_app.utils import (
     StreamlitStreamHandler,
     hash_list_of_files,
@@ -169,9 +169,14 @@ if submitted:
 files = []
 for file in summary_file_select:
     file_to_add = parsed_files_uuid_map[file]
-    chunks = st.session_state.storage_handler.get_file_chunks(file_to_add.uuid)
-    file_to_add.text = "\n".join([chunk.text for chunk in chunks])
-    files.append(file_to_add)
+    file_to_add_chunks = st.session_state.storage_handler.get_file_chunks(file_to_add.uuid)
+
+    file_to_add_with_text = File(
+        **{k: v for k, v in file_to_add.dict().items() if k != "text"},
+        text="\n".join([chunk.text for chunk in file_to_add_chunks]),
+    )
+
+    files.append(file_to_add_with_text)
 
 if len(files) == 0:
     st.stop()
@@ -198,7 +203,7 @@ if st.session_state.submitted:
                 "input": [f.to_document().page_content for f in files],
                 "chain": completed_task.chain,
                 "output": completed_task.raw,
-                "creator_user_uuid": st.session_state.user_uuid,
+                "creator_user_uuid": st.session_state.backend.get_user().uuid,
             },
         )
 
@@ -222,7 +227,7 @@ if st.session_state.submitted:
                         ) = st.session_state.llm_handler.run_summary_task(
                             summary=summary_model,
                             task=task,
-                            user_info=st.session_state.user_info,
+                            user_info=st.session_state.backend.get_user().str_llm(),
                             callbacks=[
                                 StreamlitStreamHandler(
                                     text_element=response_stream_text,
@@ -244,7 +249,7 @@ if st.session_state.submitted:
                     file_hash=summary_model.file_hash,
                     raw=response,
                     processed=response_final_markdown,
-                    creator_user_uuid=st.session_state.user_uuid,
+                    creator_user_uuid=st.session_state.backend.get_user().uuid,
                 )
                 st.session_state.summary.append(complete)
                 st.rerun()
@@ -253,7 +258,7 @@ if st.session_state.submitted:
             file_hash=summary_model.file_hash,
             file_uuids=[str(f.uuid) for f in files],
             tasks=st.session_state.summary,
-            creator_user_uuid=st.session_state.user_uuid,
+            creator_user_uuid=st.session_state.backend.get_user().uuid,
         )
 
         st.session_state.storage_handler.write_item(item=summary_complete)
