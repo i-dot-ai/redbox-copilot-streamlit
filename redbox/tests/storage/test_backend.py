@@ -155,7 +155,7 @@ class TestFiles:
                 id="foo",
                 title="Bar",
                 prompt_template=PromptTemplate.from_template("text"),
-                file_uuids=self.files,
+                file_uuids=[f.uuid for f in self.files],
                 response_text="Lorem ipsum dolor sit amet.",
                 sources=[source],
             )
