@@ -351,10 +351,7 @@ class LocalBackendAdapter(BackendAdapter):
             callbacks=callbacks,
         )
 
-        return response
-        # return ChatResponse(
-        #     response_message=ChatMessage(role="ai", text=response["content"])
-        # )
+        return ChatResponse(response_message=ChatMessage(role="ai", text=response), sources=documents)
 
     def map_reduce_summary(
         self,

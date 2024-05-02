@@ -8,7 +8,11 @@ import pytest
 
 from elasticsearch import NotFoundError
 
+from langchain.prompts import PromptTemplate
+from langchain.schema import Document
+
 from redbox.models import UploadFile, ContentType, File, Tag, ChatRequest, ChatResponse, Feedback
+from redbox.models.summary import SummaryComplete, SummaryTaskComplete
 from redbox.tests.conftest import TEST_DATA, YieldFixture
 from redbox.local import LocalBackendAdapter
 from redbox.definitions import BackendAdapter
@@ -24,6 +28,7 @@ class TestFiles:
     file: Optional[File] = None
     files: Optional[list[File]] = []
     tag: Optional[Tag] = None
+    summary: Optional[SummaryComplete] = None
 
     @pytest.fixture(params=ADAPTERS)
     def backend(self, request, settings) -> YieldFixture[BackendAdapter]:
@@ -128,6 +133,43 @@ class TestFiles:
         _ = backend.delete_tag(tag_uuid=self.tag.uuid)
         time.sleep(1)
         assert self.tag not in backend.list_tags()
+
+    def test_create_summary(self, backend):
+        tasks = [
+            SummaryTaskComplete(
+                id="foo",
+                title="Bar",
+                prompt_template=PromptTemplate.from_template("text"),
+                file_uuids=self.files,
+                response_text="Lorem ipsum dolor sit amet.",
+                sources=[
+                    Document(
+                        page_content="Lorem ipsum dolor sit amet.",
+                        metadata={},
+                    )
+                ],
+            )
+        ]
+        summary = backend.create_summary(file_uuids=self.files, tasks=tasks)
+        print(summary.file_hash)
+        print(hash(tuple(sorted(self.files))))
+        assert isinstance(summary, SummaryComplete)
+        TestFiles.summary = summary
+
+    def test_get_summary(self, backend):
+        print(hash(tuple(sorted(self.files))))
+        summary = backend.get_summary(file_uuids=self.files)
+        # print(summary.file_hash)
+        assert isinstance(summary, SummaryComplete)
+        assert summary == self.summary
+
+    def test_list_summaries(self, backend):
+        assert self.summary in backend.list_summaries()
+
+    def test_delete_summary(self, backend):
+        _ = backend.delete_summary(file_uuids=self.files)
+        time.sleep(1)
+        assert self.summary not in backend.list_summaries()
 
     def test_delete_file(self, backend):
         _ = backend.delete_file(file_uuid=self.file.uuid)

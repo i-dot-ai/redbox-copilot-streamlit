@@ -7,9 +7,11 @@ from redbox.models import SummaryTaskComplete
 from redbox.llm.summary import summary
 
 from streamlit_app.utils import (
+    StreamlitStreamHandler,
     init_session_state,
     submit_feedback,
     change_selected_model,
+    replace_doc_ref,
     LOG,
 )
 
@@ -85,15 +87,15 @@ def on_summary_of_summaries_mode_change():
     unsubmit_session_state()
 
 
-def summary_to_markdown(tasks: list[SummaryTaskComplete]) -> str:
-    out = ""
-    for completed_task in tasks:
-        out += "## " + completed_task.title + "\n\n"
-        out += completed_task.response_text + "\n\n"
-        out += completed_task.sources + "\n\n"
-    out += "---------------------------------------------------\n"
-    out += "This summary is AI Generated and may be inaccurate."
-    return out
+# def summary_to_markdown(tasks: list[SummaryTaskComplete]) -> str:
+#     out = ""
+#     for completed_task in tasks:
+#         out += "## " + completed_task.title + "\n\n"
+#         out += completed_task.response_text + "\n\n"
+#         out += completed_task.sources + "\n\n"
+#     out += "---------------------------------------------------\n"
+#     out += "This summary is AI Generated and may be inaccurate."
+#     return out
 
 
 # def summary_to_docx(tasks: list[SummaryTaskComplete], created: datetime):
@@ -171,12 +173,12 @@ with st.sidebar:
     #     file_name=f"{summary_file_name_root}.docx",
     # )
 
-    st.download_button(
-        label="Download TXT",
-        data=summary_to_markdown(tasks=st.session_state.summary),
-        mime="text/plain",
-        file_name=f"{summary_file_name_root}.txt",
-    )
+    # st.download_button(
+    #     label="Download TXT",
+    #     data=summary_to_markdown(tasks=st.session_state.summary),
+    #     mime="text/plain",
+    #     file_name=f"{summary_file_name_root}.txt",
+    # )
 
     st.button(
         label="Delete Summary",
@@ -234,11 +236,13 @@ if st.session_state.submitted:
         st.info("Loading cached summary")
         st.session_state.summary = saved_summary.tasks
 
+    st.write(len(st.session_state.summary))
+
     # Render summary
     rendered_tasks: list[str] = []
     for task in st.session_state.summary:
         st.subheader(task.title, divider=True)
-        st.markdown(task.processed, unsafe_allow_html=True)
+        st.markdown(task.response_text, unsafe_allow_html=True)
         # streamlit_feedback(
         #     **feedback_kwargs,
         #     key=f"feedback_{task.id}",
@@ -259,33 +263,39 @@ if st.session_state.submitted:
             expanded=not st.session_state.summary_of_summaries_mode,
             state="running",
         ):
+            response_stream_header = st.subheader(task.title, divider=True)
             response_stream_text = st.empty()
+
             response_raw = st.session_state.backend.stuff_doc_summary(
                 summary=task.prompt_template,
                 file_uuids=summary_file_select,
-                # callbacks=[
-                #     StreamlitStreamHandler(
-                #         text_element=response_stream_text,
-                #         initial_text="",
-                #     ),
-                #     st.session_state.llm_logger_callback,
-                # ]
+                callbacks=[
+                    StreamlitStreamHandler(
+                        text_element=response_stream_text,
+                        initial_text="",
+                    ),
+                    st.session_state.llm_logger_callback,
+                ],
+            )
+            response = replace_doc_ref(
+                output_for_render=response_raw.response_message.text,
+                files=st.session_state.backend.get_files(file_uuids=summary_file_select),
             )
 
-            st.write(response_raw)
-            # response = process_somehow()
+            response_stream_header.empty()
+            response_stream_text.empty()
 
-        # complete = SummaryTaskComplete(
-        #     id=task.id,
-        #     title=task.title,
-        #     prompt_template=task.prompt_template,
-        #     file_uuids=summary_file_select,
-        #     response_text=response,
-        #     sources=sources,
-        #     creator_user_uuid=st.session_state.backend.get_user().uuid,
-        # )
-        # st.session_state.summary.append(complete)
-        # st.rerun()
+        complete = SummaryTaskComplete(
+            id=task.id,
+            title=task.title,
+            prompt_template=task.prompt_template,
+            file_uuids=summary_file_select,
+            response_text=response,
+            sources=response_raw.sources,
+            creator_user_uuid=st.session_state.backend.get_user().uuid,
+        )
+        st.session_state.summary.append(complete)
+        st.rerun()
 
     # Save summary
     if saved_summary is None:

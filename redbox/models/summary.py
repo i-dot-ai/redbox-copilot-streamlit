@@ -46,7 +46,7 @@ class SummaryTaskComplete(SummaryTask):
 
 class SummaryBase(PersistableModel):
     file_uuids: list[UUID]
-    file_hash: str
+    file_hash: int
 
 
 class Summary(SummaryBase):
