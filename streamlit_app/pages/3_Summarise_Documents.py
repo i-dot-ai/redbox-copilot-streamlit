@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 from uuid import UUID
 
 import streamlit as st
@@ -12,7 +13,6 @@ from streamlit_app.utils import (
     init_session_state,
     submit_feedback,
     change_selected_model,
-    format_feedback_kwargs,
     response_to_message,
     LOG,
 )
@@ -89,15 +89,28 @@ def on_summary_of_summaries_mode_change():
     unsubmit_session_state()
 
 
-# def summary_to_markdown(tasks: list[SummaryTaskComplete]) -> str:
-#     out = ""
-#     for completed_task in tasks:
-#         out += "## " + completed_task.title + "\n\n"
-#         out += completed_task.response_text + "\n\n"
-#         out += completed_task.sources + "\n\n"
-#     out += "---------------------------------------------------\n"
-#     out += "This summary is AI Generated and may be inaccurate."
-#     return out
+def summary_to_markdown(tasks: list[SummaryTaskComplete], title: Optional[str] = None) -> str:
+    out = ""
+
+    if title is None:
+        out += "# Redbox Copilot \n\n"
+    else:
+        out += f"# {title} \n\n"
+
+    for completed_task in tasks:
+        out += f"## {completed_task.title} \n\n"
+        out += f"{completed_task.response_text} \n\n"
+        out += "### Sources \n\n"
+
+        source_files = st.session_state.backend.get_files(file_uuids=completed_task.file_uuids)
+        source_file_bullets = " \n".join([f"* [{file.name}]({file.url})" for file in source_files])
+
+        out += f"{source_file_bullets} \n\n"
+
+    out += "---------------------------------------------------\n"
+    out += "This summary is AI Generated and may be inaccurate."
+
+    return out
 
 
 # def summary_to_docx(tasks: list[SummaryTaskComplete], created: datetime):
@@ -175,12 +188,12 @@ with st.sidebar:
     #     file_name=f"{summary_file_name_root}.docx",
     # )
 
-    # st.download_button(
-    #     label="Download TXT",
-    #     data=summary_to_markdown(tasks=st.session_state.summary),
-    #     mime="text/plain",
-    #     file_name=f"{summary_file_name_root}.txt",
-    # )
+    st.download_button(
+        label="Download TXT",
+        data=summary_to_markdown(tasks=st.session_state.summary, title=getattr(tag, "name")),
+        mime="text/plain",
+        file_name=f"{summary_file_name_root}.txt",
+    )
 
     st.button(
         label="Delete Summary",
@@ -245,18 +258,16 @@ if st.session_state.submitted:
         st.markdown(task.response_text, unsafe_allow_html=True)
         if hasattr(task, "sources"):
             st.markdown("\n".join([source.html for source in task.sources]), unsafe_allow_html=True)
-        
+
         streamlit_feedback(
             **FEEDBACK_KWARGS,
             key=f"feedback_{task.id}",
             kwargs={
                 "input": ChatMessageSourced(
-                    text=task.prompt_template.pretty_repr(),
-                    sources=task.sources,
-                    role="system"
+                    text=task.prompt_template.pretty_repr(), sources=task.sources, role="system"
                 ),
                 "output": ChatMessage(text=task.response_text, role="ai"),
-                "creator_user_uuid": st.session_state.backend.get_user().uuid
+                "creator_user_uuid": st.session_state.backend.get_user().uuid,
             },
         )
 
