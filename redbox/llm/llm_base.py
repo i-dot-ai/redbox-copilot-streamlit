@@ -2,11 +2,12 @@ import json
 from datetime import date
 from typing import Any, Optional
 
-from langchain.chains import MapReduceDocumentsChain, ReduceDocumentsChain
-from langchain.chains.combine_documents.base import BaseCombineDocumentsChain
+from langchain.chains.combine_documents.map_reduce import MapReduceDocumentsChain, ReduceDocumentsChain
 from langchain.chains.combine_documents.stuff import StuffDocumentsChain
 from langchain.chains.llm import LLMChain
 from langchain.chains.qa_with_sources import load_qa_with_sources_chain
+from langchain.schema import Document
+from langchain.prompts import PromptTemplate
 from langchain.memory import ConversationBufferMemory
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
@@ -99,7 +100,7 @@ class LLMHandler(object):
         user_info: dict,
         chat_history: Optional[list] = None,
         callbacks: Optional[list] = None,
-    ) -> tuple[dict, BaseCombineDocumentsChain]:
+    ) -> dict[str, Any]:
         """Answers user question by retrieving context from content stored in
         Vector DB
 
@@ -147,7 +148,56 @@ class LLMHandler(object):
             },
             callbacks=callbacks or [],
         )
-        return result, docs_with_sources_chain
+        return result
+
+    def stuff_doc_summary(
+        self, prompt: PromptTemplate, documents: list[Document], user_info: dict, callbacks: Optional[list] = []
+    ):
+        summary_chain = LLMChain(llm=self.llm, prompt=prompt)
+        stuff_chain = StuffDocumentsChain(llm_chain=summary_chain, document_variable_name="text")
+
+        result = stuff_chain.run(
+            user_info=user_info,
+            current_date=date.today().isoformat(),
+            input_documents=documents,
+            callbacks=callbacks,
+        )
+
+        return result
+
+    def map_reduce_summary(
+        self,
+        map_prompt: PromptTemplate,
+        reduce_prompt: PromptTemplate,
+        documents: list[Document],
+        user_info: dict,
+        token_max: int,
+        callbacks: Optional[list] = [],
+    ):
+        map_chain = LLMChain(llm=self.llm, prompt=map_prompt)
+        reduce_chain = LLMChain(llm=self.llm, prompt=reduce_prompt)
+
+        combine_documents_chain = StuffDocumentsChain(llm_chain=reduce_chain, document_variable_name="text")
+        reduce_documents_chain = ReduceDocumentsChain(
+            combine_documents_chain=combine_documents_chain,
+            collapse_documents_chain=combine_documents_chain,
+            token_max=token_max,
+        )
+        map_reduce_chain = MapReduceDocumentsChain(
+            llm_chain=map_chain,
+            reduce_documents_chain=reduce_documents_chain,
+            document_variable_name="text",
+            return_intermediate_steps=False,
+        )
+
+        result = map_reduce_chain.run(
+            user_info=user_info,
+            current_date=date.today().isoformat(),
+            input_documents=documents,
+            callbacks=callbacks,
+        )
+
+        return result
 
     def get_summary_tasks(self, files: list[File], file_hash: str) -> Summary:
         summary = Summary(

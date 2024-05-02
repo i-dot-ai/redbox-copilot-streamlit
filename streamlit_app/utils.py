@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 from datetime import datetime
 from io import BytesIO
 from typing import Optional
+import logging
 
 import boto3
 import dotenv
@@ -35,6 +36,27 @@ from redbox.local import LocalBackendAdapter
 from redbox.definitions import BackendAdapter
 
 DEV_UUID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+
+
+def get_logger() -> logging.Logger:
+    logger = logging.getLogger("redbox-streamlit")
+    logger.setLevel(logging.INFO)
+
+    formatter = logging.Formatter(
+        "[%(asctime)s | %(name)s | %(levelname)s] %(message)s",
+        "%Y-%m-%d %H:%M",
+    )
+
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(formatter)
+
+    logger.addHandler(handler)
+
+    return logger
+
+
+LOG = get_logger()
 
 
 def init_session_state() -> dict:
