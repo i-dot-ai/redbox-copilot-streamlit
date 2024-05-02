@@ -236,13 +236,13 @@ if st.session_state.submitted:
         st.info("Loading cached summary")
         st.session_state.summary = saved_summary.tasks
 
-    st.write(len(st.session_state.summary))
-
     # Render summary
     rendered_tasks: list[str] = []
     for task in st.session_state.summary:
         st.subheader(task.title, divider=True)
         st.markdown(task.response_text, unsafe_allow_html=True)
+        if hasattr(task, "sources"):
+            st.markdown("\n".join([source.html for source in task.sources]), unsafe_allow_html=True)
         # streamlit_feedback(
         #     **feedback_kwargs,
         #     key=f"feedback_{task.id}",
@@ -263,7 +263,6 @@ if st.session_state.submitted:
             expanded=not st.session_state.summary_of_summaries_mode,
             state="running",
         ):
-            response_stream_header = st.subheader(task.title, divider=True)
             response_stream_text = st.empty()
 
             response_raw = st.session_state.backend.stuff_doc_summary(
@@ -282,6 +281,9 @@ if st.session_state.submitted:
 
             response_stream_header.empty()
             response_stream_text.empty()
+            response_stream_text.markdown(response.text, unsafe_allow_html=True)
+            if hasattr(response, "sources"):
+                st.markdown("\n".join([source.html for source in response.sources]), unsafe_allow_html=True)
 
         complete = SummaryTaskComplete(
             id=task.id,

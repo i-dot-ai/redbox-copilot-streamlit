@@ -5,7 +5,7 @@ from langchain.prompts import PromptTemplate
 from pydantic import field_serializer, field_validator
 
 from redbox.models.base import PersistableModel
-from redbox.models.file import SourceDocument
+from redbox.models.chat import ChatSource
 
 
 class SummaryTask(PersistableModel):
@@ -38,7 +38,7 @@ class SummaryTaskComplete(SummaryTask):
     title: str
     file_uuids: list[UUID]
     response_text: str
-    sources: Optional[list[SourceDocument]]
+    sources: Optional[list[ChatSource]]
 
 
 class SummaryBase(PersistableModel):

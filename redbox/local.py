@@ -352,7 +352,8 @@ class LocalBackendAdapter(BackendAdapter):
         )
 
         return ChatResponse(
-            output_text=response, sources=[SourceDocument.from_langchain_document(document) for document in documents]
+            output_text=response,
+            source_documents=[SourceDocument.from_langchain_document(document) for document in documents],
         )
 
     def map_reduce_summary(
@@ -382,5 +383,6 @@ class LocalBackendAdapter(BackendAdapter):
         )
 
         return ChatResponse(
-            output_text=response, sources=[SourceDocument.from_langchain_document(document) for document in documents]
+            output_text=response,
+            source_documents=[SourceDocument.from_langchain_document(document) for document in documents],
         )

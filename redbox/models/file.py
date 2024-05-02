@@ -3,7 +3,6 @@ from enum import Enum
 from typing import Optional
 from io import BytesIO
 from uuid import UUID
-import ast
 
 import tiktoken
 from langchain.schema import Document
@@ -204,13 +203,8 @@ class SourceDocument(BaseModel):
 
     @classmethod
     def from_langchain_document(cls, document: Document) -> "SourceDocument":
-        page_number_string = document.metadata.get("page_number")
-        page_numbers: Optional[list[int]] = None
-        if page_number_string is not None:
-            page_numbers = ast.literal_eval(page_number_string)
-
         return cls(
             page_content=document.page_content,
             file_uuid=document.metadata["parent_doc_uuid"],
-            page_numbers=page_numbers,
+            page_numbers=document.metadata.get("page_number"),
         )
