@@ -23,7 +23,7 @@ def summary_tasks_to_docx(
     tasks: Iterable[SummaryTaskComplete],
     reference_files: Iterable[File],
     title: Optional[str] = None,
-    created: Optional[datetime] = None,
+    created: Optional[datetime] = datetime.now(),
 ) -> Document:
     uuid_to_file_map = {f.uuid: f for f in reference_files}
 
@@ -73,7 +73,7 @@ def summary_tasks_to_docx(
             raw = raw.replace(f"Doc{uuid}", f"{uuid_to_file_map[uuid].name}")
             raw = raw.replace(f"{uuid}", f"{uuid_to_file_map[uuid].name}")
 
-        html_raw = markdown.markdown(task.raw)
+        html_raw = markdown.markdown(raw)
         temp_file = tempfile.NamedTemporaryFile(delete=True, suffix=".html")
 
         with open(temp_file.name, "w", encoding="utf-8") as f:

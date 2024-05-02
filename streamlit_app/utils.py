@@ -6,6 +6,8 @@ from datetime import datetime
 from io import BytesIO
 from typing import Optional
 import logging
+import unicodedata
+import re
 
 import boto3
 import dotenv
@@ -588,3 +590,11 @@ def change_selected_model() -> None:
         temperature=st.session_state.model_params["temperature"],
     )
     st.toast(f"Loaded {st.session_state.model_select}")
+
+
+def slugify(text: str) -> str:
+    slug = unicodedata.normalize("NFKD", text)
+    slug = slug.encode("ascii", "ignore").lower()
+    slug = re.sub(r"[^a-z0-9]+", "-", slug).strip("-")
+    slug = re.sub(r"[-]+", "-", slug)
+    return slug

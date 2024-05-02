@@ -1,12 +1,14 @@
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
+from io import BytesIO
 
 import streamlit as st
 from streamlit_feedback import streamlit_feedback
 
-from redbox.models import SummaryTaskComplete, ChatMessageSourced, ChatMessage
+from redbox.models import SummaryTaskComplete, ChatMessageSourced, ChatMessage, File
 from redbox.llm.summary import summary
+from redbox.export.docx import summary_tasks_to_docx
 
 from streamlit_app.utils import (
     StreamlitStreamHandler,
@@ -14,6 +16,7 @@ from streamlit_app.utils import (
     submit_feedback,
     change_selected_model,
     response_to_message,
+    slugify,
     LOG,
 )
 
@@ -97,12 +100,12 @@ def summary_to_markdown(tasks: list[SummaryTaskComplete], title: Optional[str] =
     else:
         out += f"# {title} \n\n"
 
-    for completed_task in tasks:
-        out += f"## {completed_task.title} \n\n"
-        out += f"{completed_task.response_text} \n\n"
+    for task in tasks:
+        out += f"## {task.title} \n\n"
+        out += f"{task.response_text} \n\n"
         out += "### Sources \n\n"
 
-        source_files = st.session_state.backend.get_files(file_uuids=completed_task.file_uuids)
+        source_files = st.session_state.backend.get_files(file_uuids=task.file_uuids)
         source_file_bullets = " \n".join([f"* [{file.name}]({file.url})" for file in source_files])
 
         out += f"{source_file_bullets} \n\n"
@@ -113,38 +116,21 @@ def summary_to_markdown(tasks: list[SummaryTaskComplete], title: Optional[str] =
     return out
 
 
-# def summary_to_docx(tasks: list[SummaryTaskComplete], created: datetime):
-#     reference_files: set[File]
+def summary_to_docx(tasks: list[SummaryTaskComplete], title: Optional[str] = None) -> BytesIO:
+    reference_files: set[File] = set()
+    for task in tasks:
+        reference_files.update(st.session_state.backend.get_files(file_uuids=task.file_uuids))
 
-#     if tag is not None:
-#         document = summary_complete_to_docx(
-#             summary_complete=summary_completed_by_hash[SELECTED_FILE_HASH],
-#             files=files,
-#             title=tag.name,
-#         )
-#     elif len(files) == 1:
-#         sanitised_file_name = files[0].name.replace("_", " ").replace("-", " ")
-#         # remove file extension
-#         sanitised_file_name = sanitised_file_name[: sanitised_file_name.rfind(".")]
-#         sanitised_file_name = sanitised_file_name.strip()
+    if len(reference_files) == 1:
+        title = slugify(reference_files[0].name)
 
-#         # replace any multiple spaces with single space
-#         sanitised_file_name = " ".join(sanitised_file_name.split())
+    document = summary_tasks_to_docx(tasks=tasks, reference_files=reference_files, title=title)
 
-#         document = summary_complete_to_docx(
-#             summary_complete=summary_completed_by_hash[SELECTED_FILE_HASH],
-#             files=files,
-#             title=sanitised_file_name,
-#         )
-#     else:
-#         document = summary_complete_to_docx(
-#             summary_complete=summary_completed_by_hash[SELECTED_FILE_HASH],
-#             files=files,
-#         )
-#     bytes_document = BytesIO()
-#     document.save(bytes_document)
-#     bytes_document.seek(0)
-#     return bytes_document
+    bytes_document = BytesIO()
+    document.save(bytes_document)
+    bytes_document.seek(0)
+
+    return bytes_document
 
 
 def delete_summary(file_uuids: list[UUID]) -> None:
@@ -178,19 +164,20 @@ with st.sidebar:
     )
 
     tag = TAGS.get(getattr(st.session_state, "selected_tag", None))
-    tag_prefix = f"{tag.name}_" if tag is not None else ""
-    summary_file_name_root = f"{tag_prefix}{datetime.now().isoformat()}_summary"
+    tag_name = tag.name if tag is not None else None
+    tag_file_prefix = f"{tag.name}_" if tag is not None else ""
+    summary_file_name_root = f"{tag_file_prefix}{datetime.now().isoformat()}_summary"
 
-    # st.download_button(
-    #     label="Download DOCX",
-    #     data=summary_to_docx(tasks=st.session_state.summary),
-    #     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    #     file_name=f"{summary_file_name_root}.docx",
-    # )
+    st.download_button(
+        label="Download DOCX",
+        data=summary_to_docx(tasks=st.session_state.summary, title=tag_name),
+        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        file_name=f"{summary_file_name_root}.docx",
+    )
 
     st.download_button(
         label="Download TXT",
-        data=summary_to_markdown(tasks=st.session_state.summary, title=getattr(tag, "name")),
+        data=summary_to_markdown(tasks=st.session_state.summary, title=tag_name),
         mime="text/plain",
         file_name=f"{summary_file_name_root}.txt",
     )
