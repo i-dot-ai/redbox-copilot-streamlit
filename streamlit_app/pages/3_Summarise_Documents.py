@@ -2,8 +2,9 @@ from datetime import datetime
 from uuid import UUID
 
 import streamlit as st
+from streamlit_feedback import streamlit_feedback
 
-from redbox.models import SummaryTaskComplete
+from redbox.models import SummaryTaskComplete, ChatMessageSourced, ChatMessage
 from redbox.llm.summary import summary
 
 from streamlit_app.utils import (
@@ -11,6 +12,7 @@ from streamlit_app.utils import (
     init_session_state,
     submit_feedback,
     change_selected_model,
+    format_feedback_kwargs,
     response_to_message,
     LOG,
 )
@@ -243,16 +245,21 @@ if st.session_state.submitted:
         st.markdown(task.response_text, unsafe_allow_html=True)
         if hasattr(task, "sources"):
             st.markdown("\n".join([source.html for source in task.sources]), unsafe_allow_html=True)
-        # streamlit_feedback(
-        #     **feedback_kwargs,
-        #     key=f"feedback_{task.id}",
-        #     kwargs={
-        #         "input": [f.to_document().page_content for f in files],
-        #         "chain": task.chain,
-        #         "output": task.raw,
-        #         "creator_user_uuid": st.session_state.backend.get_user().uuid,
-        #     },
-        # )
+        
+        streamlit_feedback(
+            **FEEDBACK_KWARGS,
+            key=f"feedback_{task.id}",
+            kwargs={
+                "input": ChatMessageSourced(
+                    text=task.prompt_template.pretty_repr(),
+                    sources=task.sources,
+                    role="system"
+                ),
+                "output": ChatMessage(text=task.response_text, role="ai"),
+                "creator_user_uuid": st.session_state.backend.get_user().uuid
+            },
+        )
+
         rendered_tasks.append(task.id)
 
     # Run summary
