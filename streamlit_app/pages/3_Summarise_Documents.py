@@ -11,7 +11,7 @@ from streamlit_app.utils import (
     init_session_state,
     submit_feedback,
     change_selected_model,
-    replace_doc_ref,
+    response_to_message,
     LOG,
 )
 
@@ -277,10 +277,8 @@ if st.session_state.submitted:
                     st.session_state.llm_logger_callback,
                 ],
             )
-            response = replace_doc_ref(
-                output_for_render=response_raw.response_message.text,
-                files=st.session_state.backend.get_files(file_uuids=summary_file_select),
-            )
+
+            response = response_to_message(response=response_raw)
 
             response_stream_header.empty()
             response_stream_text.empty()
@@ -290,8 +288,8 @@ if st.session_state.submitted:
             title=task.title,
             prompt_template=task.prompt_template,
             file_uuids=summary_file_select,
-            response_text=response,
-            sources=response_raw.sources,
+            response_text=response.text,
+            sources=response.sources,
             creator_user_uuid=st.session_state.backend.get_user().uuid,
         )
         st.session_state.summary.append(complete)

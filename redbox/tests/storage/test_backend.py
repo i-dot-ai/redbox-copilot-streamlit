@@ -9,10 +9,19 @@ import pytest
 from elasticsearch import NotFoundError
 
 from langchain.prompts import PromptTemplate
-from langchain.schema import Document
 
-from redbox.models import UploadFile, ContentType, File, Tag, ChatRequest, ChatResponse, Feedback
-from redbox.models.summary import SummaryComplete, SummaryTaskComplete
+from redbox.models import (
+    UploadFile,
+    ContentType,
+    File,
+    Tag,
+    ChatRequest,
+    ChatResponse,
+    Feedback,
+    SourceDocument,
+    SummaryComplete,
+    SummaryTaskComplete,
+)
 from redbox.tests.conftest import TEST_DATA, YieldFixture
 from redbox.local import LocalBackendAdapter
 from redbox.definitions import BackendAdapter
@@ -143,10 +152,7 @@ class TestFiles:
                 file_uuids=self.files,
                 response_text="Lorem ipsum dolor sit amet.",
                 sources=[
-                    Document(
-                        page_content="Lorem ipsum dolor sit amet.",
-                        metadata={},
-                    )
+                    SourceDocument(page_content="Lorem ipsum dolor sit amet.", file_uuid=uuid4(), page_numbers=[1, 3])
                 ],
             )
         ]

@@ -351,7 +351,9 @@ class LocalBackendAdapter(BackendAdapter):
             callbacks=callbacks,
         )
 
-        return ChatResponse(response_message=ChatMessage(role="ai", text=response), sources=documents)
+        return ChatResponse(
+            output_text=response, sources=[SourceDocument.from_langchain_document(document) for document in documents]
+        )
 
     def map_reduce_summary(
         self,
@@ -379,4 +381,6 @@ class LocalBackendAdapter(BackendAdapter):
             callbacks=callbacks,
         )
 
-        return ChatResponse(response_message=ChatMessage(role="ai", text=response["content"]))
+        return ChatResponse(
+            output_text=response, sources=[SourceDocument.from_langchain_document(document) for document in documents]
+        )

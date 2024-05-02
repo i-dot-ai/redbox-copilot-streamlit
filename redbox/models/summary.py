@@ -2,10 +2,10 @@ from typing import Optional
 from uuid import UUID
 
 from langchain.prompts import PromptTemplate
-from langchain_core.documents import Document
 from pydantic import field_serializer, field_validator
 
 from redbox.models.base import PersistableModel
+from redbox.models.file import SourceDocument
 
 
 class SummaryTask(PersistableModel):
@@ -14,6 +14,16 @@ class SummaryTask(PersistableModel):
     # langchain.prompts.PromptTemplate needs pydantic v1, breaks
     # https://python.langchain.com/docs/guides/pydantic_compatibility
     prompt_template: object
+
+    @field_validator("prompt_template")
+    @classmethod
+    def is_prompt_template(cls, v: PromptTemplate | dict) -> PromptTemplate:
+        if isinstance(v, dict):
+            return PromptTemplate(**v)
+        elif isinstance(v, PromptTemplate):
+            return v
+        else:
+            raise ValueError("Invalid value for prompt_template")
 
     @field_serializer("prompt_template")
     def serialise_prompt(self, prompt_template: PromptTemplate, _info):
@@ -28,20 +38,7 @@ class SummaryTaskComplete(SummaryTask):
     title: str
     file_uuids: list[UUID]
     response_text: str
-    # langchain_core.documents.Document needs pydantic v1, breaks
-    # https://python.langchain.com/docs/guides/pydantic_compatibility
-    sources: Optional[list[object]]
-
-    @field_validator("sources")
-    @classmethod
-    def is_document(cls, v: list[Document]) -> list[Document]:
-        """Custom validator for using Pydantic v1 object in model."""
-        assert all(isinstance(doc, Document) for doc in v)
-        return v
-
-    @field_serializer("sources")
-    def serialise_doc(self, sources: list[Document], _info):
-        return [source.dict() for source in sources]
+    sources: Optional[list[SourceDocument]]
 
 
 class SummaryBase(PersistableModel):
