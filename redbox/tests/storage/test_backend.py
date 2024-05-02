@@ -211,30 +211,9 @@ class TestLLM:
         assert llm_sent == llm_returned
 
     def test_create_feedback(self, backend):
-        test_source = {
-            "page_content": "Lorem ipsum dolor sit amet.",
-            "metadata": {
-                "url": "http://gov.uk/",
-                "is_continuation": True,
-                "languages": '["eng"]',
-                "orig_elements": "",
-                "parent_doc_uuid": "c3a0984d-c2b2-41a6-aee1-0d4d04503000",
-                "filetype": "text/plain",
-                "uuid": "bfbf8098-aeb7-4b09-9022-95c415c2b82e",
-                "parent_file_uuid": "c3a0984d-c2b2-41a6-aee1-0d4d04503000",
-                "index": 23,
-                "created_datetime": "2024-04-29T15:25:06.545568",
-                "token_count": 203,
-                "text_hash": "946428d39d737f0c750e1a3ff9f6120b",
-            },
-            "type": "Document",
-        }
-
         feedback = Feedback(
-            input="Foo",
-            chain=[{"role": "user", "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit."}],
-            output="Bar",
-            sources=[test_source for _ in range(3)],
+            input=[{"role": "user", "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit."}],
+            output={"role": "ai", "text": "Ut enim ad minim veniam."},
             feedback_type="thumbs",
             feedback_score="👍",
             feedback_text="Baz",
