@@ -17,6 +17,7 @@ from redbox.models import (
     Tag,
     ChatRequest,
     ChatResponse,
+    ChatSource,
     Feedback,
     SourceDocument,
     SummaryComplete,
@@ -54,7 +55,8 @@ class TestFiles:
 
         backend.set_llm(
             model="openai/gpt-3.5-turbo",
-            max_tokens=1024,
+            max_tokens=10_000,
+            max_return_tokens=1_024,
             temperature=0.2,
         )
 
@@ -144,6 +146,10 @@ class TestFiles:
         assert self.tag not in backend.list_tags()
 
     def test_create_summary(self, backend):
+        source = ChatSource(
+            document=SourceDocument(page_content="Lorem ipsum dolor sit amet.", file_uuid=uuid4(), page_numbers=[1, 3]),
+            html="",
+        )
         tasks = [
             SummaryTaskComplete(
                 id="foo",
@@ -151,9 +157,7 @@ class TestFiles:
                 prompt_template=PromptTemplate.from_template("text"),
                 file_uuids=self.files,
                 response_text="Lorem ipsum dolor sit amet.",
-                sources=[
-                    SourceDocument(page_content="Lorem ipsum dolor sit amet.", file_uuid=uuid4(), page_numbers=[1, 3])
-                ],
+                sources=[source],
             )
         ]
         summary = backend.create_summary(file_uuids=self.files, tasks=tasks)
@@ -208,7 +212,8 @@ class TestLLM:
 
         backend.set_llm(
             model="openai/gpt-3.5-turbo",
-            max_tokens=1024,
+            max_tokens=10_000,
+            max_return_tokens=1_024,
             temperature=0.2,
         )
         yield backend
@@ -270,6 +275,7 @@ class TestLLM:
         llm_sent = backend.set_llm(
             model="mistral/mistral-tiny",
             max_tokens=1_000,
+            max_return_tokens=256,
             temperature=0.1,
         )
         llm_returned = backend.get_llm()
@@ -316,7 +322,6 @@ class TestLLM:
         response = backend.map_reduce_summary(
             map_prompt=map_prompt,
             reduce_prompt=reduce_prompt,
-            max_tokens=5000,
             file_uuids=[file_long.uuid, file_short.uuid],
         )
 

@@ -8,6 +8,7 @@ from streamlit_feedback import streamlit_feedback
 
 from redbox.models import SummaryTaskComplete, ChatMessageSourced, ChatMessage, File
 from redbox.llm.summary import summary
+from redbox.llm.prompts.summary import SUMMARY_COMBINATION_TASK_PROMPT
 from redbox.export.docx import summary_tasks_to_docx
 
 from streamlit_app.utils import (
@@ -182,7 +183,7 @@ with st.sidebar:
         file_name=f"{summary_file_name_root}.txt",
     )
 
-    st.button(
+    delete_summary_button = st.button(
         label="Delete Summary",
         on_click=delete_summary,
         kwargs={"file_uuids": getattr(st.session_state, "selected_files", [])},
@@ -270,17 +271,31 @@ if st.session_state.submitted:
         ):
             response_stream_text = st.empty()
 
-            response_raw = st.session_state.backend.stuff_doc_summary(
-                summary=task.prompt_template,
-                file_uuids=summary_file_select,
-                callbacks=[
-                    StreamlitStreamHandler(
-                        text_element=response_stream_text,
-                        initial_text="",
-                    ),
-                    st.session_state.llm_logger_callback,
-                ],
-            )
+            if st.session_state.summary_of_summaries_mode:
+                response_raw = st.session_state.backend.map_reduce_summary(
+                    map_prompt=task.prompt_template,
+                    reduce_prompt=SUMMARY_COMBINATION_TASK_PROMPT,
+                    file_uuids=summary_file_select,
+                    callbacks=[
+                        StreamlitStreamHandler(
+                            text_element=response_stream_text,
+                            initial_text="",
+                        ),
+                        st.session_state.llm_logger_callback,
+                    ],
+                )
+            else:
+                response_raw = st.session_state.backend.stuff_doc_summary(
+                    summary=task.prompt_template,
+                    file_uuids=summary_file_select,
+                    callbacks=[
+                        StreamlitStreamHandler(
+                            text_element=response_stream_text,
+                            initial_text="",
+                        ),
+                        st.session_state.llm_logger_callback,
+                    ],
+                )
 
             response = response_to_message(response=response_raw)
 

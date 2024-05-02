@@ -8,7 +8,6 @@ from langchain.chains.llm import LLMChain
 from langchain.chains.qa_with_sources import load_qa_with_sources_chain
 from langchain.schema import Document
 from langchain.prompts import PromptTemplate
-from langchain.memory import ConversationBufferMemory
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
 from redbox.llm.prompts.chat import (
@@ -34,6 +33,7 @@ class LLMHandler(object):
         self,
         llm,
         user_uuid: str,
+        max_tokens: int,
         vector_store=None,
         embedding_function: Optional[HuggingFaceEmbeddings] = None,
     ):
@@ -42,20 +42,17 @@ class LLMHandler(object):
         Args:
             llm (_type_): _description_
             user_uuid: Session to load data from and save data to.
+            max_tokens: The max size of this LLM's context window
             vector_store (Optional[Chroma], optional): _description_.
             Defaults to None.
             embedding_function (Optional[HuggingFaceEmbeddings], optional):
             _description_. Defaults to None.
         """
-
         self.llm = llm
         self.user_uuid = user_uuid
-
+        self.max_tokens = max_tokens
         self.embedding_function = embedding_function
-
         self.vector_store = vector_store
-
-        self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
     def add_chunks_to_vector_store(self, chunks: list[Chunk]) -> None:
         """Takes a list of Chunks and embedds them into the vector store
@@ -171,7 +168,6 @@ class LLMHandler(object):
         reduce_prompt: PromptTemplate,
         documents: list[Document],
         user_info: dict,
-        token_max: int,
         callbacks: Optional[list] = [],
     ):
         map_chain = LLMChain(llm=self.llm, prompt=map_prompt)
@@ -181,7 +177,7 @@ class LLMHandler(object):
         reduce_documents_chain = ReduceDocumentsChain(
             combine_documents_chain=combine_documents_chain,
             collapse_documents_chain=combine_documents_chain,
-            token_max=token_max,
+            token_max=self.max_tokens,
         )
         map_reduce_chain = MapReduceDocumentsChain(
             llm_chain=map_chain,
@@ -219,7 +215,6 @@ class LLMHandler(object):
         user_info: dict,
         callbacks: Optional[list] = None,
         map_reduce: bool = False,
-        token_max: int = 100_000,
     ) -> tuple[Any, StuffDocumentsChain | MapReduceDocumentsChain]:
         map_chain = LLMChain(llm=self.llm, prompt=task.prompt_template)  # type: ignore
         regular_chain = StuffDocumentsChain(llm_chain=map_chain, document_variable_name="text")
@@ -229,7 +224,7 @@ class LLMHandler(object):
         reduce_documents_chain = ReduceDocumentsChain(
             combine_documents_chain=combine_documents_chain,
             collapse_documents_chain=combine_documents_chain,
-            token_max=token_max,
+            token_max=self.max_tokens,
         )
         map_reduce_chain = MapReduceDocumentsChain(
             llm_chain=map_chain,

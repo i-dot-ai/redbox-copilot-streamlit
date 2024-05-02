@@ -279,10 +279,10 @@ class LocalBackendAdapter(BackendAdapter):
 
     # region LLM ====================
 
-    def set_llm(self, model: str, max_tokens: int, temperature: int) -> LLMHandler:
+    def set_llm(self, model: str, max_tokens: int, max_return_tokens: int, temperature: int) -> LLMHandler:
         llm = ChatLiteLLM(
             model=model,
-            max_tokens=max_tokens,
+            max_tokens=max_return_tokens,  # max count of returned tokens, NOT context size
             temperature=temperature,
             streaming=True,
         )  # type: ignore[call-arg]
@@ -300,9 +300,7 @@ class LocalBackendAdapter(BackendAdapter):
         )
 
         self._llm = LLMHandler(
-            llm=llm,
-            user_uuid=str(self.get_user().uuid),
-            vector_store=vector_store,
+            llm=llm, user_uuid=str(self.get_user().uuid), vector_store=vector_store, max_tokens=max_tokens
         )
 
         return self._llm
@@ -360,7 +358,6 @@ class LocalBackendAdapter(BackendAdapter):
         self,
         map_prompt: PromptTemplate,
         reduce_prompt: PromptTemplate,
-        max_tokens: int,
         file_uuids: list[UUID],
         callbacks: Optional[list[Callable]] = [],
     ) -> ChatResponse:
@@ -375,7 +372,7 @@ class LocalBackendAdapter(BackendAdapter):
             while len(chunks) > 0:
                 chunk = chunks.pop()
 
-                if token_count + chunk.token_count >= max_tokens:
+                if token_count + chunk.token_count >= self._llm.max_tokens:
                     document = Document(
                         page_content=" ".join(page_content),
                         metadata=reduce(Metadata.merge, metadata),
@@ -401,7 +398,6 @@ class LocalBackendAdapter(BackendAdapter):
             reduce_prompt=reduce_prompt,
             documents=documents,
             user_info=self.get_user().dict_llm(),
-            token_max=max_tokens,
             callbacks=callbacks,
         )
 
