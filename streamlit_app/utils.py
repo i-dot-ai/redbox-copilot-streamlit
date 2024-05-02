@@ -5,7 +5,6 @@ from uuid import UUID, uuid4
 from datetime import datetime
 from io import BytesIO
 from typing import Optional
-import json
 
 import boto3
 import dotenv
@@ -16,9 +15,7 @@ from botocore.client import ClientError
 from elasticsearch import Elasticsearch
 from langchain.callbacks import FileCallbackHandler
 from langchain.callbacks.base import BaseCallbackHandler
-from langchain.chains.base import Chain
 from langchain.schema.output import LLMResult
-from langchain_core.documents.base import Document
 from loguru import logger
 from lxml.html.clean import Cleaner
 
@@ -31,6 +28,7 @@ from redbox.models import (
     Feedback,
     File,
     ChatPersona,
+    SourceDocument,
 )
 from redbox.storage import ElasticsearchStorageHandler
 from redbox.local import LocalBackendAdapter
@@ -455,12 +453,10 @@ def eval_csv_to_squad_json(csv_path: str, json_path: str) -> None:
 
 
 def submit_feedback(
-    feedback: dict,
-    input: str | list[str],
-    output: str,
-    sources: list,
-    creator_user_uuid: str,
-    chain: Optional[Chain] = None,
+    feedback: dict[str, str],
+    input: ChatMessage | list[ChatMessage],
+    output: ChatMessage,
+    creator_user_uuid: UUID,
 ) -> None:
     """Submits feedback to the storage handler
     Args:
@@ -473,9 +469,7 @@ def submit_feedback(
     """
     feedback = Feedback(
         input=input,
-        chain=chain,
         output=output,
-        sources=sources,
         feedback_type=feedback["type"],
         feedback_score=feedback["score"],
         feedback_text=feedback["text"],
@@ -533,47 +527,34 @@ def get_persona_prompt(persona_name) -> str | None:
     return next(chat_persona.prompt for chat_persona in chat_personas if chat_persona.name == persona_name)
 
 
-def get_document_citation_assets(document: Document) -> set[tuple[File, Optional[list[int]], str]]:
-    """Takes a Document and returns a tuple of its File, page numbers and URL."""
-    file = st.session_state.backend.get_file(UUID(document.metadata["parent_doc_uuid"]))
+def get_document_citation_assets(document: SourceDocument) -> set[tuple[File, Optional[list[int]], str]]:
+    """Takes a SourceDocument and returns a tuple of its File, page numbers and URL."""
+    file = st.session_state.backend.get_file(file_uuid=document.file_uuid)
 
-    page_numbers = None
-    if "page_numbers" in document.metadata:
-        page_numbers = tuple(json.loads(document.metadata["page_numbers"]))
-
-    if page_numbers is None:
+    if document.page_numbers is None:
         url = get_file_link(file=file)
     else:
-        for page in page_numbers:
+        for page in document.page_numbers:
             url = get_file_link(file=file, page=page)
 
-    return file, page_numbers, url
+    return file, document.page_numbers, url
 
 
 def response_to_message(response: ChatResponse) -> ChatMessage | ChatMessageSourced:
     sources: list[ChatSource] = []
-    if response.sources is not None:
-        for source in response.sources:
+    if response.source_documents is not None:
+        for source in response.source_documents:
             sources.append(ChatSource(document=source, html=get_document_citation_assets(source)[2]))
-        return ChatMessageSourced(**response.response_message.model_dump(), sources=sources)
+        return ChatMessageSourced(text=response.output_text, role="ai", sources=sources)
     else:
-        return response.response_message
+        return ChatMessage(text=response.output_text, role="ai")
 
 
-def format_feedback_kwargs(chat_history: list[ChatResponse], user_uuid: UUID, n: int = -1) -> dict:
+def format_feedback_kwargs(chat_history: list[ChatMessage], user_uuid: UUID, n: int = -1) -> dict:
     """Formats feedback kwarg dict based on a chat history."""
-    previous_history = chat_history[0:n]
-    current = chat_history[n]
-
-    sources = None
-    if hasattr(current, "sources"):
-        sources = [source.document.dict() for source in current.sources]
-
     return {
-        "input": [msg.text for msg in previous_history],
-        "chain": previous_history,
-        "output": current.text,
-        "sources": sources,
+        "input": chat_history[0:n],
+        "output": chat_history[n],
         "creator_user_uuid": user_uuid,
     }
 

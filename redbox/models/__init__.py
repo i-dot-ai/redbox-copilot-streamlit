@@ -10,6 +10,7 @@ from redbox.models.file import (
     ProcessingStatusEnum,
     UploadFile,
     Metadata,
+    SourceDocument,
 )
 from redbox.models.llm import (
     EmbeddingResponse,
@@ -43,6 +44,7 @@ __all__ = [
     "File",
     "UploadFile",
     "FileStatus",
+    "SourceDocument",
     "Summary",
     "SummaryComplete",
     "SummaryTask",

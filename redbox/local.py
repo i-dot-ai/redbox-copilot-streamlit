@@ -20,7 +20,7 @@ from redbox.models import (
     Tag,
     ChatRequest,
     ChatResponse,
-    ChatMessage,
+    SourceDocument,
     Feedback,
     User,
     UploadFile,
@@ -289,5 +289,8 @@ class LocalBackendAdapter(BackendAdapter):
         )
 
         return ChatResponse(
-            response_message=ChatMessage(role="ai", text=response["output_text"]), sources=response["input_documents"]
+            output_text=response["output_text"],
+            source_documents=[
+                SourceDocument.from_langchain_document(document=document) for document in response["input_documents"]
+            ],
         )

@@ -71,7 +71,7 @@ with st.sidebar:
     st.download_button(
         label="Download Conversation",
         data=json.dumps(
-            [msg.dict() for msg in st.session_state.messages],
+            [msg.model_dump_json() for msg in st.session_state.messages],
             indent=4,
             ensure_ascii=False,
         ),
