@@ -9,6 +9,7 @@ from redbox.models.file import (
     FileStatus,
     ProcessingStatusEnum,
     UploadFile,
+    Metadata,
 )
 from redbox.models.llm import (
     EmbeddingResponse,
@@ -35,6 +36,7 @@ __all__ = [
     "ChatPersona",
     "Chunk",
     "ChunkStatus",
+    "Metadata",
     "Tag",
     "ContentType",
     "Feedback",
