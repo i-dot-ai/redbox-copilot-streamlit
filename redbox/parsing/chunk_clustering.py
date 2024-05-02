@@ -1,16 +1,17 @@
+from functools import reduce
 from itertools import compress
 
 import numpy as np
 import scipy
 from langchain_core.embeddings.embeddings import Embeddings
 
-from redbox.models.file import Chunk
+from redbox.models.file import Chunk, Metadata
 
 
 def cluster_chunks(
     chunks: list[Chunk],
+    embedding_model: Embeddings,
     desired_chunk_size: int = 300,
-    embedding_model: Embeddings = None,
     dist_weight_split: float = 0.2,
     dist_use_log: bool = True,
 ) -> list[Chunk]:
@@ -19,13 +20,12 @@ def cluster_chunks(
 
     Args:
             chunks (List[File]): List of raw (small) chunks extracted from document.
-            desired_chunk_size: Avarage size of the output chunks. Defaults to 300,
-            embed_model (str): name of the sentence embedding model used to compare chunk similarity.
-                Defaults to "all-mpnet-base-v2".
+            desired_chunk_size (int): Avarage size of the output chunks. Defaults to 300,
+            embed_model (SentenceTransformer): name of the sentence embedding model used to compare chunk similarity
             dist_weight_split (float): Expects value between 0 and 1.
                 When calculating the combined distance metric this is the relative weight (importance)
                 of the semantic similarity vs the token counts. Defaults to .2.
-            dist_use_log (bool): When calculationg the combined distance metric should the input values
+            dist_use_log (bool): When calculating the combined distance metric should the input values
                 be scaled by log. Defaults to True.
 
     Returns:
@@ -128,30 +128,8 @@ def create_pdist(token_counts, pair_embed_dist, weight_embed_dist=0.2, use_log=T
     return combined_dist
 
 
-def merge_chunk_metadata(meta_in: list[dict]) -> dict:
+def merge_chunk_metadata(meta_in: list[Metadata]) -> Metadata:
     """
     Combine metadata for multiple chunks from the same document.
     """
-    # collect all the possible key values
-    all_keys: set = set()
-    for meta in meta_in:
-        all_keys = all_keys.union(meta.keys())
-    meta_out: dict = {}
-    for key in all_keys:
-        # collect all the values for that key in each metadata
-        one_meta_to_collapse = [meta[key] for meta in meta_in if key in meta]
-        if isinstance(one_meta_to_collapse[0], list):
-            meta_out[key] = list()
-            for meta in one_meta_to_collapse:
-                meta_out[key] += meta
-        elif isinstance(one_meta_to_collapse[0], dict):
-            meta_out[key] = merge_chunk_metadata(one_meta_to_collapse)
-        elif all(x == one_meta_to_collapse[0] for x in one_meta_to_collapse):
-            meta_out[key] = one_meta_to_collapse[0]
-        else:
-            meta_out[key] = one_meta_to_collapse
-
-        # Dedupe page numbers of merged chunks
-        if key in ["page_number", "languages"] and isinstance(meta_out[key], list):
-            meta_out[key] = list(set(sorted(meta_out[key])))
-    return meta_out
+    return reduce(Metadata.merge, meta_in)
