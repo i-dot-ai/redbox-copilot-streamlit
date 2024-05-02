@@ -358,24 +358,47 @@ class LocalBackendAdapter(BackendAdapter):
 
     def map_reduce_summary(
         self,
-        map: PromptTemplate,
-        reduce: PromptTemplate,
+        map_prompt: PromptTemplate,
+        reduce_prompt: PromptTemplate,
         max_tokens: int,
         file_uuids: list[UUID],
         callbacks: Optional[list[Callable]] = [],
     ) -> ChatResponse:
+        # Create documents under max_tokens size
         documents: list[Document] = []
         for file_uuid in file_uuids:
             chunks = self.get_file_chunks(file_uuid=file_uuid)
-            document = Document(
-                page_content=" ".join([chunk.text for chunk in chunks]),
-                metadata=reduce(Metadata.merge, [chunk.metadata for chunk in chunks]),
-            )
-            documents.append(document)
+
+            token_count: int = 0
+            page_content: list[str] = []
+            metadata: list[Metadata] = []
+            while len(chunks) > 0:
+                chunk = chunks.pop()
+
+                if token_count + chunk.token_count >= max_tokens:
+                    document = Document(
+                        page_content=" ".join(page_content),
+                        metadata=reduce(Metadata.merge, metadata),
+                    )
+                    documents.append(document)
+                    token_count: int = 0
+                    page_content: list[str] = []
+                    metadata: list[Metadata] = []
+
+                page_content.append(chunk.text)
+                metadata.append(chunk.metadata)
+                token_count += chunk.token_count
+
+            if len(page_content) > 0:
+                document = Document(
+                    page_content=" ".join(page_content),
+                    metadata=reduce(Metadata.merge, metadata),
+                )
+                documents.append(document)
 
         response = self._llm.map_reduce_summary(
-            map_prompt=map,
-            reduce_prompt=reduce,
+            map_prompt=map_prompt,
+            reduce_prompt=reduce_prompt,
             documents=documents,
             user_info=self.get_user().dict_llm(),
             token_max=max_tokens,

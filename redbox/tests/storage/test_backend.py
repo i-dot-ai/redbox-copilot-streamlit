@@ -213,11 +213,29 @@ class TestLLM:
         )
         yield backend
 
-        "What does Mr. Aneurin Bevan think of the national health insurance system"
+    @pytest.fixture
+    def file_long(self, backend) -> YieldFixture[File]:
+        full_path = Path(TEST_DATA / "docs/NATIONAL HEALTH SERVICE BILL.txt")
+        sanitised_name = full_path.name.replace("'", "_")
+        file_type = full_path.suffix
+
+        with open(full_path, "rb") as f:
+            to_upload = UploadFile(
+                content_type=ContentType(file_type),
+                filename=sanitised_name,
+                creator_user_uuid=UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                file=BytesIO(f.read()),
+            )
+
+        file = backend.create_file(file=to_upload)
+
+        yield file
+
+        _ = backend.delete_file(file_uuid=file.uuid)
 
     @pytest.fixture
-    def file(self, backend) -> YieldFixture[File]:
-        full_path = Path(TEST_DATA / "docs/NATIONAL HEALTH SERVICE BILL.txt")
+    def file_short(self, backend) -> YieldFixture[File]:
+        full_path = Path(TEST_DATA / "docs/Working Smarter (press release).docx")
         sanitised_name = full_path.name.replace("'", "_")
         file_type = full_path.suffix
 
@@ -281,5 +299,27 @@ class TestLLM:
         response = backend.rag_chat(chat_request=request)
 
         assert isinstance(response, ChatResponse)
-        assert len(response.response_message.text) > 0
-        assert len(response.sources) > 0
+        assert len(response.output_text) > 0
+        assert len(response.source_documents) > 0
+
+    def test_stuff_doc_summary(self, backend, file_short):
+        summary = PromptTemplate.from_template("Summarise this text: {text}")
+        response = backend.stuff_doc_summary(summary=summary, file_uuids=[file_short.uuid])
+
+        assert isinstance(response, ChatResponse)
+        assert len(response.output_text) > 0
+        assert len(response.source_documents) > 0
+
+    def test_map_reduce_summary(self, backend, file_short, file_long):
+        map_prompt = PromptTemplate.from_template("Summarise this text: {text}")
+        reduce_prompt = PromptTemplate.from_template("Summarise these summaries: {text}")
+        response = backend.map_reduce_summary(
+            map_prompt=map_prompt,
+            reduce_prompt=reduce_prompt,
+            max_tokens=5000,
+            file_uuids=[file_long.uuid, file_short.uuid],
+        )
+
+        assert isinstance(response, ChatResponse)
+        assert len(response.output_text) > 0
+        assert len(response.source_documents) > 0
