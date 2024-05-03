@@ -48,6 +48,7 @@ jobs:
           mkdir -p data/elastic/
           mkdir -p data/objectstore/
           mkdir -p data/queue/
+          mkdir -p app/
           chmod -R 777 data/
           chmod -R 777 app/
           cp .env.example .env
