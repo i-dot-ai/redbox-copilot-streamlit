@@ -16,39 +16,22 @@ jobs:
   
       steps:
       - uses: actions/checkout@v3
-  
-      - name: Free disk space (Ubuntu)
-        uses: jlumbroso/free-disk-space@main
-        with:
-          # this might remove tools that are actually needed,
-          # if set to "true" but frees about 6 GB
-          tool-cache: false
-  
-          # all of these default to true, but feel free to set to
-          # "false" if necessary for your workflow
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
 
       - name: Add dependencies for unstructured
         run: |
           sudo apt update && sudo apt-get install -y \
           poppler-utils \
-          tesseract-ocr \
-          ffmpeg \
-          libsm6 \
-          libxext6
+          tesseract-ocr
   
-      - name: Set up Python 3.11 with poetry
-        run: pipx install poetry
-      - uses: actions/setup-python@v3
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v3
         with:
           python-version: "3.11"
-          cache: 'poetry'
-      - run: poetry install --with dev
+  
+      - name: Set up poetry
+        uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: 1.7.0
     
       - name: Build containers
         run: |
@@ -62,13 +45,9 @@ jobs:
           cp .env.example .env
           echo OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} >> .env
 
-          poetry run python -c "from sentence_transformers import SentenceTransformer; \
-          SentenceTransformer(\
-            '${EMBEDDING_MODEL}',
-            cache_folder='${SENTENCE_TRANSFORMERS_HOME}'\
-          );"
+          poetry install --with dev
           
-          docker compose up -d elasticsearch minio --build
+          make up
   
       - name: Wait 60s for services to be ready
         run: |
