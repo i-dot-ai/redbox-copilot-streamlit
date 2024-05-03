@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from uuid import UUID
 
-from redbox.models import Chunk, Tag, Feedback, File, SummaryComplete
+from redbox.models import Chunk, Feedback, File, SummaryComplete, Tag
 from redbox.models.base import PersistableModel
 
 

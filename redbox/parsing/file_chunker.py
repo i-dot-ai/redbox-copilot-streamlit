@@ -1,9 +1,9 @@
+from botocore.client import BaseClient
 from langchain_core.embeddings.embeddings import Embeddings
 
 from redbox.models.file import Chunk, ContentType, File
 from redbox.parsing.chunk_clustering import cluster_chunks
 from redbox.parsing.chunkers import other_chunker
-from botocore.client import BaseClient
 
 
 class FileChunker:

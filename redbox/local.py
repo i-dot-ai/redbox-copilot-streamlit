@@ -1,40 +1,37 @@
-from uuid import UUID
-from typing import TextIO, Sequence, Optional, Callable
 import logging
-from pathlib import Path
 import urllib.parse
 from functools import reduce
+from pathlib import Path
+from typing import Callable, Optional, Sequence
+from uuid import UUID
 
-from langchain_community.chat_models import ChatLiteLLM
-from langchain_elasticsearch import ElasticsearchStore
-from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.prompts.prompt import PromptTemplate
 from langchain.schema import Document
+from langchain_community.chat_models import ChatLiteLLM
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_elasticsearch import ElasticsearchStore
 
 from redbox.definitions import BackendAdapter
-from redbox.storage.elasticsearch import ElasticsearchStorageHandler
-from redbox.parsing.file_chunker import FileChunker
+from redbox.llm.llm_base import LLMHandler
 from redbox.models import (
-    File,
-    Settings,
-    Chunk,
-    FileStatus,
-    Tag,
     ChatRequest,
     ChatResponse,
-    SourceDocument,
-    Feedback,
-    User,
-    UploadFile,
+    Chunk,
     ContentType,
+    Feedback,
+    File,
+    FileStatus,
     Metadata,
+    Settings,
+    SourceDocument,
     SummaryComplete,
     SummaryTaskComplete,
+    Tag,
+    UploadFile,
+    User,
 )
-from redbox.llm.llm_base import LLMHandler
-
-logging.basicConfig(level=logging.INFO)
-LOG = logging.getLogger()
+from redbox.parsing.file_chunker import FileChunker
+from redbox.storage.elasticsearch import ElasticsearchStorageHandler
 
 
 class LocalBackendAdapter(BackendAdapter):
@@ -108,7 +105,7 @@ class LocalBackendAdapter(BackendAdapter):
         assert self._user is not None
 
         # Upload
-        LOG.info(f"Uploading {file.uuid}")
+        logging.info(f"Uploading {file.uuid}")
 
         file_type = Path(file.filename).suffix
 
@@ -129,7 +126,7 @@ class LocalBackendAdapter(BackendAdapter):
         authenticated_s3_url_parsed = urllib.parse.urlparse(authenticated_s3_url)
         simple_s3_url = urllib.parse.urljoin(authenticated_s3_url, authenticated_s3_url_parsed.path)
 
-        LOG.info(f"Uploaded file to {simple_s3_url}")
+        logging.info(f"Uploaded file to {simple_s3_url}")
 
         file_uploaded = File(
             url=simple_s3_url,
@@ -139,22 +136,22 @@ class LocalBackendAdapter(BackendAdapter):
         )
 
         # Chunk
-        LOG.info(f"Chunking {file.uuid}")
+        logging.info(f"Chunking {file.uuid}")
 
         chunks = self._file_publisher.chunk_file(file_uploaded)
 
         # Save
-        LOG.info(f"Saving {file.uuid}")
+        logging.info(f"Saving {file.uuid}")
 
         self._storage_handler.write_item(file_uploaded)
         self._storage_handler.write_items(chunks)
 
         # Index
-        LOG.info(f"Indexing {file.uuid}")
+        logging.info(f"Indexing {file.uuid}")
 
         self._llm.add_chunks_to_vector_store(chunks=chunks)
 
-        LOG.info(f"{file.uuid} complete!")
+        logging.info(f"{file.uuid} complete!")
 
         return file_uploaded
 
@@ -197,7 +194,7 @@ class LocalBackendAdapter(BackendAdapter):
 
     def get_file_chunks(self, file_uuid: UUID) -> Sequence[Chunk]:
         """Gets a file's chunks by UUID."""
-        LOG.info(f"getting chunks for file {file_uuid}")
+        logging.info(f"getting chunks for file {file_uuid}")
         chunks = self._storage_handler.get_file_chunks(file_uuid)
         return chunks
 

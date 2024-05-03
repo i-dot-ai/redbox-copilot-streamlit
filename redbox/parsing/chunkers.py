@@ -1,8 +1,8 @@
+from botocore.client import BaseClient
 from unstructured.chunking.title import chunk_by_title
 from unstructured.partition.auto import partition
 
 from redbox.models import Chunk, File
-from botocore.client import BaseClient
 
 
 def other_chunker(file: File, s3_client: BaseClient, bucket_name: str) -> list[Chunk]:

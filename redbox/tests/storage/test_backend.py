@@ -1,32 +1,30 @@
+import time
 from io import BytesIO
-from uuid import UUID, uuid4
 from pathlib import Path
 from typing import Optional
-import time
+from uuid import UUID, uuid4
 
 import pytest
-
 from elasticsearch import NotFoundError
-
 from langchain.prompts import PromptTemplate
 from langchain.schema import Document
 
+from redbox.definitions import BackendAdapter
+from redbox.local import LocalBackendAdapter
 from redbox.models import (
-    UploadFile,
-    ContentType,
-    File,
-    Tag,
     ChatRequest,
     ChatResponse,
     ChatSource,
+    ContentType,
     Feedback,
+    File,
     SourceDocument,
     SummaryComplete,
     SummaryTaskComplete,
+    Tag,
+    UploadFile,
 )
 from redbox.tests.conftest import TEST_DATA, YieldFixture
-from redbox.local import LocalBackendAdapter
-from redbox.definitions import BackendAdapter
 
 DOCS = [Path(*x.parts[-2:]) for x in (TEST_DATA / "docs").glob("*.*")]
 ADAPTERS = [LocalBackendAdapter]
