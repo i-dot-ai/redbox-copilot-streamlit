@@ -38,12 +38,12 @@ jobs:
         with:
           python-version: "3.11"
   
-      - name: Set up Poetry
+      - name: Set up poetry
         uses: abatilo/actions-poetry@v2
         with:
           poetry-version: 1.7.0
   
-      - name: Build Containers
+      - name: Build containers
         run: |
           mkdir -p data/elastic/
           mkdir -p data/objectstore/
@@ -54,6 +54,12 @@ jobs:
           
           poetry install --with dev
           docker compose up -d elasticsearch minio --build
+
+      - name: Add dependencies for unstructured
+        run: |
+          sudo apt update && sudo apt-get install -y \
+          poppler-utils \
+          tesseract-ocr
   
       - name: Wait 60s for services to be ready
         run: |
