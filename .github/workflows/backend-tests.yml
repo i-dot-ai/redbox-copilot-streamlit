@@ -46,8 +46,8 @@ jobs:
           mkdir -p data/queue/
           chmod -R 777 data/
 
-          mkdir -p /app
-          chmod -R 777 /app
+          sudo mkdir -p /app
+          sudo chmod -R 777 /app
 
           cp .env.example .env
           echo OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} >> .env
