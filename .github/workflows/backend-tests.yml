@@ -17,7 +17,7 @@ jobs:
       steps:
       - uses: actions/checkout@v3
   
-      - name: Free Disk Space (Ubuntu)
+      - name: Free disk space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
           # this might remove tools that are actually needed,
@@ -59,7 +59,10 @@ jobs:
         run: |
           sudo apt update && sudo apt-get install -y \
           poppler-utils \
-          tesseract-ocr
+          tesseract-ocr \
+          ffmpeg \
+          libsm6 \
+          libxext6
   
       - name: Wait 60s for services to be ready
         run: |
