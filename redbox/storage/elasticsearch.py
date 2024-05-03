@@ -204,8 +204,8 @@ class ElasticsearchStorageHandler(BaseStorageHandler):
         # Test 1: Get the file
         try:
             _ = self.read_item(file_uuid, "File")
-        except NotFoundError:
-            raise ValueError(f"File {file_uuid} not found")
+        except NotFoundError as e:
+            raise ValueError(f"File {file_uuid} not found") from e
 
         # Test 2: Get the number of chunks for the file
         chunk_uuids = self._get_child_chunks(file_uuid)

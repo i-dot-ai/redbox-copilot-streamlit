@@ -148,7 +148,7 @@ class LLMHandler(object):
         return result
 
     def stuff_doc_summary(
-        self, prompt: PromptTemplate, documents: list[Document], user_info: dict, callbacks: Optional[list] = []
+        self, prompt: PromptTemplate, documents: list[Document], user_info: dict, callbacks: Optional[list] = None
     ):
         summary_chain = LLMChain(llm=self.llm, prompt=prompt)
         stuff_chain = StuffDocumentsChain(llm_chain=summary_chain, document_variable_name="text")
@@ -157,7 +157,7 @@ class LLMHandler(object):
             user_info=user_info,
             current_date=date.today().isoformat(),
             input_documents=documents,
-            callbacks=callbacks,
+            callbacks=callbacks or [],
         )
 
         return result
@@ -168,7 +168,7 @@ class LLMHandler(object):
         reduce_prompt: PromptTemplate,
         documents: list[Document],
         user_info: dict,
-        callbacks: Optional[list] = [],
+        callbacks: Optional[list] = None,
     ):
         map_chain = LLMChain(llm=self.llm, prompt=map_prompt)
         reduce_chain = LLMChain(llm=self.llm, prompt=reduce_prompt)
@@ -190,7 +190,7 @@ class LLMHandler(object):
             user_info=user_info,
             current_date=date.today().isoformat(),
             input_documents=documents,
-            callbacks=callbacks,
+            callbacks=callbacks or [],
         )
 
         return result

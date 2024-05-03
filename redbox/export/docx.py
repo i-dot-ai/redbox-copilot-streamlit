@@ -23,8 +23,11 @@ def summary_tasks_to_docx(
     tasks: Iterable[SummaryTaskComplete],
     reference_files: Iterable[File],
     title: Optional[str] = None,
-    created: Optional[datetime] = datetime.now(),
+    created: Optional[datetime] = None,
 ) -> Document:
+    if created is None:
+        created = datetime.now()
+
     uuid_to_file_map = {f.uuid: f for f in reference_files}
 
     document = Document()

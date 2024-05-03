@@ -311,7 +311,7 @@ class LocalBackendAdapter(BackendAdapter):
     def simple_chat(self, chat_history: Sequence[dict]) -> TextIO:
         pass
 
-    def rag_chat(self, chat_request: ChatRequest, callbacks: Optional[list[Callable]] = []) -> ChatResponse:
+    def rag_chat(self, chat_request: ChatRequest, callbacks: Optional[list[Callable]] = None) -> ChatResponse:
         *previous_history, question = chat_request.message_history
 
         formatted_history = "\n".join([f"{msg.role}: {msg.text}" for msg in previous_history])
@@ -320,7 +320,7 @@ class LocalBackendAdapter(BackendAdapter):
             user_question=question.text,
             user_info=self.get_user().dict_llm(),
             chat_history=formatted_history,
-            callbacks=callbacks,
+            callbacks=callbacks or [],
         )
 
         return ChatResponse(
@@ -331,7 +331,7 @@ class LocalBackendAdapter(BackendAdapter):
         )
 
     def stuff_doc_summary(
-        self, summary: PromptTemplate, file_uuids: list[UUID], callbacks: Optional[list[Callable]] = []
+        self, summary: PromptTemplate, file_uuids: list[UUID], callbacks: Optional[list[Callable]] = None
     ) -> ChatResponse:
         documents: list[Document] = []
         for file_uuid in file_uuids:
@@ -346,7 +346,7 @@ class LocalBackendAdapter(BackendAdapter):
             prompt=summary,
             documents=documents,
             user_info=self.get_user().dict_llm(),
-            callbacks=callbacks,
+            callbacks=callbacks or [],
         )
 
         return ChatResponse(
@@ -359,7 +359,7 @@ class LocalBackendAdapter(BackendAdapter):
         map_prompt: PromptTemplate,
         reduce_prompt: PromptTemplate,
         file_uuids: list[UUID],
-        callbacks: Optional[list[Callable]] = [],
+        callbacks: Optional[list[Callable]] = None,
     ) -> ChatResponse:
         # Create documents under max_tokens size
         documents: list[Document] = []
@@ -398,7 +398,7 @@ class LocalBackendAdapter(BackendAdapter):
             reduce_prompt=reduce_prompt,
             documents=documents,
             user_info=self.get_user().dict_llm(),
-            callbacks=callbacks,
+            callbacks=callbacks or [],
         )
 
         return ChatResponse(
