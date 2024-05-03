@@ -62,7 +62,7 @@ jobs:
           cp .env.example .env
           echo OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} >> .env
 
-          python -c "from sentence_transformers import SentenceTransformer; \
+          poetry run python -c "from sentence_transformers import SentenceTransformer; \
           SentenceTransformer(\
             '${EMBEDDING_MODEL}',
             cache_folder='${SENTENCE_TRANSFORMERS_HOME}'\
