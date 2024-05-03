@@ -1,5 +1,4 @@
-from redbox.models.chat import ChatMessage, ChatRequest, ChatResponse, ChatMessageSourced, ChatSource
-from redbox.models.tag import Tag
+from redbox.models.chat import ChatMessage, ChatMessageSourced, ChatRequest, ChatResponse, ChatSource
 from redbox.models.feedback import Feedback
 from redbox.models.file import (
     Chunk,
@@ -7,10 +6,10 @@ from redbox.models.file import (
     ContentType,
     File,
     FileStatus,
-    ProcessingStatusEnum,
-    UploadFile,
     Metadata,
+    ProcessingStatusEnum,
     SourceDocument,
+    UploadFile,
 )
 from redbox.models.llm import (
     EmbeddingResponse,
@@ -26,6 +25,7 @@ from redbox.models.summary import (
     SummaryTask,
     SummaryTaskComplete,
 )
+from redbox.models.tag import Tag
 from redbox.models.user import User
 
 __all__ = [

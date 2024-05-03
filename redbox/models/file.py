@@ -1,7 +1,8 @@
+import ast
 import hashlib
 from enum import Enum
-from typing import Optional
 from io import BytesIO
+from typing import Optional
 from uuid import UUID
 
 import tiktoken
@@ -197,14 +198,24 @@ class FileExistsException(Exception):
 class SourceDocument(BaseModel):
     page_content: str = Field(description="chunk text")
     file_uuid: UUID = Field(description="uuid of original file")
-    page_numbers: Optional[list[int]] = Field(
+    page_numbers: Optional[int | list[int]] = Field(
         description="page number of the file that this chunk came from", default=None
     )
 
     @classmethod
     def from_langchain_document(cls, document: Document) -> "SourceDocument":
+        # LangChain occassionally retrieves lists as strings. We work around it
+        page_numbers_raw = document.metadata.get("page_number")
+
+        if page_numbers_raw is None:
+            page_numbers = None
+        elif isinstance(page_numbers_raw, str):
+            page_numbers = ast.literal_eval(page_numbers_raw)
+        else:
+            page_numbers = page_numbers_raw
+
         return cls(
             page_content=document.page_content,
             file_uuid=document.metadata["parent_doc_uuid"],
-            page_numbers=document.metadata.get("page_number"),
+            page_numbers=page_numbers,
         )

@@ -1,10 +1,9 @@
-from typing import Generator, TypeVar, Dict, Tuple
-from uuid import uuid4
 from pathlib import Path
+from typing import Dict, Generator, Tuple, TypeVar
+from uuid import uuid4
 
 import pytest
 from elasticsearch import Elasticsearch
-
 
 from redbox.models import Chunk, File, Settings
 from redbox.storage.elasticsearch import ElasticsearchStorageHandler

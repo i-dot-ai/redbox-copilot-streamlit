@@ -1,24 +1,23 @@
+import logging
 from datetime import datetime
+from io import BytesIO
 from typing import Optional
 from uuid import UUID
-from io import BytesIO
 
 import streamlit as st
 from streamlit_feedback import streamlit_feedback
 
-from redbox.models import SummaryTaskComplete, ChatMessageSourced, ChatMessage, File
-from redbox.llm.summary import summary
-from redbox.llm.prompts.summary import SUMMARY_COMBINATION_TASK_PROMPT
 from redbox.export.docx import summary_tasks_to_docx
-
+from redbox.llm.prompts.summary import SUMMARY_COMBINATION_TASK_PROMPT
+from redbox.llm.summary import summary
+from redbox.models import ChatMessage, ChatMessageSourced, File, SummaryTaskComplete
 from streamlit_app.utils import (
     StreamlitStreamHandler,
-    init_session_state,
-    submit_feedback,
     change_selected_model,
+    init_session_state,
     response_to_message,
     slugify,
-    LOG,
+    submit_feedback,
 )
 
 st.set_page_config(page_title="Redbox Copilot - Ask the Box", page_icon="📮", layout="wide")
@@ -61,7 +60,7 @@ def update_token_budget_tracker():
 
     for selected_file_uuid in st.session_state.selected_files:
         selected_file = FILES[selected_file_uuid]
-        LOG.info(selected_file)
+        logging.info(selected_file)
         current_token_count += selected_file.token_count
 
     if current_token_count > MAX_TOKENS:
@@ -123,7 +122,7 @@ def summary_to_docx(tasks: list[SummaryTaskComplete], title: Optional[str] = Non
         reference_files.update(st.session_state.backend.get_files(file_uuids=task.file_uuids))
 
     if len(reference_files) == 1:
-        title = slugify(reference_files[0].name)
+        title = slugify(list(reference_files)[0].name)
 
     document = summary_tasks_to_docx(tasks=tasks, reference_files=reference_files, title=title)
 

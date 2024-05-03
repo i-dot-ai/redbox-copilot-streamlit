@@ -1,13 +1,13 @@
 import base64
 import hashlib
+import logging
 import os
-from uuid import UUID, uuid4
+import re
+import unicodedata
 from datetime import datetime
 from io import BytesIO
 from typing import Optional
-import logging
-import unicodedata
-import re
+from uuid import UUID, uuid4
 
 import boto3
 import dotenv
@@ -22,43 +22,22 @@ from langchain.schema.output import LLMResult
 from loguru import logger
 from lxml.html.clean import Cleaner
 
+from redbox.definitions import BackendAdapter
+from redbox.local import LocalBackendAdapter
 from redbox.models import (
-    Settings,
     ChatMessage,
     ChatMessageSourced,
+    ChatPersona,
     ChatResponse,
     ChatSource,
     Feedback,
     File,
-    ChatPersona,
+    Settings,
     SourceDocument,
 )
 from redbox.storage import ElasticsearchStorageHandler
-from redbox.local import LocalBackendAdapter
-from redbox.definitions import BackendAdapter
 
 DEV_UUID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
-
-
-def get_logger() -> logging.Logger:
-    logger = logging.getLogger("redbox-streamlit")
-    logger.setLevel(logging.INFO)
-
-    formatter = logging.Formatter(
-        "[%(asctime)s | %(name)s | %(levelname)s] %(message)s",
-        "%Y-%m-%d %H:%M",
-    )
-
-    handler = logging.StreamHandler()
-    handler.setLevel(logging.INFO)
-    handler.setFormatter(formatter)
-
-    logger.addHandler(handler)
-
-    return logger
-
-
-LOG = get_logger()
 
 
 def init_session_state() -> dict:
@@ -183,9 +162,9 @@ def init_session_state() -> dict:
         except ClientError as err:
             # The bucket does not exist or you have no access.
             if err.response["Error"]["Code"] == "404":
-                print("The bucket does not exist.")
+                logging.info("The bucket does not exist.")
                 st.session_state.s3_client.create_bucket(Bucket=st.session_state.BUCKET_NAME)
-                print("Bucket created successfully.")
+                logging.info("Bucket created successfully.")
             else:
                 raise err
 
@@ -617,7 +596,7 @@ def change_selected_model() -> None:
 
 def slugify(text: str) -> str:
     slug = unicodedata.normalize("NFKD", text)
-    slug = slug.encode("ascii", "ignore").lower()
+    slug = slug.encode("ascii", "ignore").decode("ascii").lower()
     slug = re.sub(r"[^a-z0-9]+", "-", slug).strip("-")
     slug = re.sub(r"[-]+", "-", slug)
     return slug

@@ -104,7 +104,7 @@ class ElasticsearchStorageHandler(BaseStorageHandler):
             )
 
         except NotFoundError:
-            print(f"Index {target_index} not found. Returning empty list.")
+            logging.warning(f"Index {target_index} not found. Returning empty list.")
             return []
 
         # Grab the model we'll use to deserialize the items
@@ -134,7 +134,7 @@ class ElasticsearchStorageHandler(BaseStorageHandler):
             )
 
         except NotFoundError:
-            print(f"Index {target_index} not found. Returning empty list.")
+            logging.warning(f"Index {target_index} not found. Returning empty list.")
             return []
         uuids = [UUID(item["_id"]) for item in results]
         return uuids

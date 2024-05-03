@@ -1,6 +1,7 @@
+import logging
 import tempfile
-from typing import Optional, Iterable
 from datetime import datetime
+from typing import Iterable, Optional
 
 import markdown
 from dateutil import parser
@@ -100,7 +101,7 @@ def summary_tasks_to_docx(
             elif element_dict["type"] == "Title":
                 document.add_heading(element_dict["text"], level=2)
             else:
-                print(element_dict["type"], element_dict["text"])
+                logging.warning(element_dict["type"], element_dict["text"])
 
         document.add_page_break()
 

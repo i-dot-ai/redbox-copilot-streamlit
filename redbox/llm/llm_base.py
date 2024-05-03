@@ -6,8 +6,8 @@ from langchain.chains.combine_documents.map_reduce import MapReduceDocumentsChai
 from langchain.chains.combine_documents.stuff import StuffDocumentsChain
 from langchain.chains.llm import LLMChain
 from langchain.chains.qa_with_sources import load_qa_with_sources_chain
-from langchain.schema import Document
 from langchain.prompts import PromptTemplate
+from langchain.schema import Document
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
 from redbox.llm.prompts.chat import (

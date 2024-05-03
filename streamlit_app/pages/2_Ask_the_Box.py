@@ -8,11 +8,11 @@ from redbox.llm.prompts.core import CORE_REDBOX_PROMPT
 from redbox.models.chat import ChatMessage, ChatRequest, ChatResponse
 from streamlit_app.utils import (
     StreamlitStreamHandler,
-    init_session_state,
-    submit_feedback,
     change_selected_model,
     format_feedback_kwargs,
+    init_session_state,
     response_to_message,
+    submit_feedback,
 )
 
 st.set_page_config(page_title="Redbox Copilot - Ask the Box", page_icon="📮", layout="wide")
