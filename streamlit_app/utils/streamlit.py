@@ -1,12 +1,9 @@
 import base64
 import os
-from uuid import UUID
 from datetime import datetime
 from io import BytesIO
 from typing import Optional
 from uuid import UUID
-import unicodedata
-import re
 
 import dotenv
 import html2markdown
@@ -20,15 +17,7 @@ from lxml.html.clean import Cleaner
 
 from redbox.definitions import BackendAdapter
 from redbox.local import LocalBackendAdapter
-from redbox.models import (
-    ChatMessage,
-    Feedback,
-    File,
-    SourceDocument,
-    Settings
-)
-from redbox.local import LocalBackendAdapter
-from redbox.definitions import BackendAdapter
+from redbox.models import ChatMessage, Feedback, File, Settings
 
 
 def init_session_state() -> dict:

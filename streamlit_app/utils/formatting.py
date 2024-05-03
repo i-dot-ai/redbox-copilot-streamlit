@@ -1,7 +1,7 @@
-from uuid import UUID
-from typing import Optional
-import unicodedata
 import re
+import unicodedata
+from typing import Optional
+from uuid import UUID
 
 import streamlit as st
 
@@ -33,7 +33,11 @@ def get_link_html(page: str, text: str, query_dict: Optional[dict] = None, targe
     else:
         query = ""
 
-    return f"<a href='/{page}{query}' target={target}><button style='background-color: white;border-radius: 8px;'>{text}</button></a>"
+    return (
+        f"<a href='/{page}{query}' target={target}>"
+        f"<button style='background-color: white;border-radius: 8px;'>{text}</button>"
+        "</a>"
+    )
 
 
 def get_file_link(file: File, page: Optional[int] = None) -> str:

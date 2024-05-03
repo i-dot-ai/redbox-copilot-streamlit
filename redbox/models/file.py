@@ -1,7 +1,6 @@
 import ast
 import hashlib
 from enum import StrEnum
-from typing import Optional
 from io import BytesIO
 from typing import Optional
 from uuid import UUID
