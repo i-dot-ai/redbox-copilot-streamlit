@@ -9,6 +9,7 @@ import pytest
 from elasticsearch import NotFoundError
 
 from langchain.prompts import PromptTemplate
+from langchain.schema import Document
 
 from redbox.models import (
     UploadFile,
@@ -78,6 +79,8 @@ class TestFiles:
 
         yield to_upload
 
+    # region FILES ====================
+
     def test_get_supported_file_types(self, upload, backend):
         accepted = set(backend.get_supported_file_types())
         uploaded = {upload.content_type.value}
@@ -114,6 +117,13 @@ class TestFiles:
         chunks = backend.get_file_chunks(file_uuid=self.file.uuid)
         assert len(chunks) > 0
 
+    def test_get_file_as_documents(self, backend):
+        documents = backend.get_file_as_documents(file_uuid=self.file.uuid, max_tokens=3_000)
+        assert len(documents) > 1
+        assert all(isinstance(document, Document) for document in documents)
+
+    # region TAGS ====================
+
     def test_create_tag(self, backend):
         tag = backend.create_tag(name="TestTag")
         assert isinstance(tag, Tag)
@@ -145,6 +155,8 @@ class TestFiles:
         time.sleep(1)
         assert self.tag not in backend.list_tags()
 
+    # region SUMMARIES ====================
+
     def test_create_summary(self, backend):
         source = ChatSource(
             document=SourceDocument(page_content="Lorem ipsum dolor sit amet.", file_uuid=uuid4(), page_numbers=[1, 3]),
@@ -160,16 +172,12 @@ class TestFiles:
                 sources=[source],
             )
         ]
-        summary = backend.create_summary(file_uuids=self.files, tasks=tasks)
-        print(summary.file_hash)
-        print(hash(tuple(sorted(self.files))))
+        summary = backend.create_summary(file_uuids=[f.uuid for f in self.files], tasks=tasks)
         assert isinstance(summary, SummaryComplete)
         TestFiles.summary = summary
 
     def test_get_summary(self, backend):
-        print(hash(tuple(sorted(self.files))))
-        summary = backend.get_summary(file_uuids=self.files)
-        # print(summary.file_hash)
+        summary = backend.get_summary(file_uuids=[f.uuid for f in self.files])
         assert isinstance(summary, SummaryComplete)
         assert summary == self.summary
 
@@ -177,7 +185,7 @@ class TestFiles:
         assert self.summary in backend.list_summaries()
 
     def test_delete_summary(self, backend):
-        _ = backend.delete_summary(file_uuids=self.files)
+        _ = backend.delete_summary(file_uuids=[f.uuid for f in self.files])
         time.sleep(1)
         assert self.summary not in backend.list_summaries()
 
@@ -258,6 +266,8 @@ class TestLLM:
 
         _ = backend.delete_file(file_uuid=file.uuid)
 
+    # region USER AND CONFIG ====================
+
     def test_get_set_user(self, backend):
         user_sent = backend.set_user(
             uuid=uuid4(),
@@ -282,6 +292,8 @@ class TestLLM:
 
         assert llm_sent == llm_returned
 
+    # region FEEDBACK ====================
+
     def test_create_feedback(self, backend):
         feedback = Feedback(
             input=[{"role": "user", "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit."}],
@@ -295,6 +307,8 @@ class TestLLM:
         given = backend.create_feedback(feedback=feedback)
 
         assert isinstance(given, Feedback)
+
+    # region LLM ====================
 
     def test_rag_chat(self, backend):
         request = ChatRequest(

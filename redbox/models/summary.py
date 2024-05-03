@@ -22,8 +22,6 @@ class SummaryTask(PersistableModel):
             return PromptTemplate(**v)
         elif isinstance(v, PromptTemplate):
             return v
-        else:
-            raise ValueError("Invalid value for prompt_template")
 
     @field_serializer("prompt_template")
     def serialise_prompt(self, prompt_template: PromptTemplate, _info):
