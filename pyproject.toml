@@ -5,11 +5,11 @@ target-version = 'py311'
 [tool.ruff.lint]
 select = [
   "B",
-#  "E",
+  "E",
 #  "F",
 #  "I",
 #  "T",
-#  "W",
+  "W",
 #  "SLF",
 ]
 ignore = []

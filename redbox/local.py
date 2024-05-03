@@ -337,8 +337,8 @@ class LocalBackendAdapter(BackendAdapter):
         for file_uuid in file_uuids:
             chunks = self.get_file_chunks(file_uuid=file_uuid)
             document = Document(
-                page_content=" ".join([chunk.text for chunk in chunks]),
-                metadata=reduce(Metadata.merge, [chunk.metadata for chunk in chunks]),
+                page_content=" ".join(chunk.text for chunk in chunks),
+                metadata=reduce(Metadata.merge, (chunk.metadata for chunk in chunks)),
             )
             documents.append(document)
 
