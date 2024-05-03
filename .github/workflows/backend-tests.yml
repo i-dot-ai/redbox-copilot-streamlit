@@ -1,0 +1,64 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Backend unit tests
+
+on:
+    pull_request:
+
+permissions:
+    contents: read
+
+jobs:
+    backend-test:
+  
+      runs-on: ubuntu-latest
+  
+      steps:
+      - uses: actions/checkout@v3
+  
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          # this might remove tools that are actually needed,
+          # if set to "true" but frees about 6 GB
+          tool-cache: false
+  
+          # all of these default to true, but feel free to set to
+          # "false" if necessary for your workflow
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+  
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.11"
+  
+      - name: Set up Poetry
+        uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: 1.7.0
+  
+      - name: Build Containers
+        run: |
+          mkdir -p data/elastic/
+          mkdir -p data/objectstore/
+          mkdir -p data/queue/
+          chmod -R 777 data/
+          cp .env.example .env
+          echo OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} >> .env
+          
+          poetry install --with dev
+          docker compose up -d elasticsearch minio --build
+  
+      - name: Wait 60s for services to be ready
+        run: |
+          sleep 60
+  
+      - name: Run unit tests with pytest
+        run: |
+          poetry run pytest
