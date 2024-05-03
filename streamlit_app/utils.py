@@ -1,21 +1,17 @@
 import base64
-import hashlib
-import logging
 import os
-import re
-import unicodedata
+from uuid import UUID
 from datetime import datetime
 from io import BytesIO
 from typing import Optional
-from uuid import UUID, uuid4
+from uuid import UUID
+import unicodedata
+import re
 
-import boto3
 import dotenv
 import html2markdown
 import pandas as pd
 import streamlit as st
-from botocore.client import ClientError
-from elasticsearch import Elasticsearch
 from langchain.callbacks import FileCallbackHandler
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.schema.output import LLMResult
@@ -27,15 +23,15 @@ from redbox.local import LocalBackendAdapter
 from redbox.models import (
     ChatMessage,
     ChatMessageSourced,
-    ChatPersona,
     ChatResponse,
     ChatSource,
     Feedback,
     File,
-    Settings,
     SourceDocument,
+    Settings
 )
-from redbox.storage import ElasticsearchStorageHandler
+from redbox.local import LocalBackendAdapter
+from redbox.definitions import BackendAdapter
 
 DEV_UUID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
 
@@ -116,10 +112,17 @@ def init_session_state() -> dict:
             }
             reload_llm = st.button(label="♻️ Reload LLM and LLMHandler")
             if reload_llm:
-                load_llm_handler(ENV=ENV)
+                st.session_state.backend.set_llm(
+                    model=st.session_state.model_select,
+                    max_tokens=st.session_state.model_params["max_tokens"],
+                    max_return_tokens=st.session_state.model_params["max_return_tokens"],
+                    temperature=st.session_state.model_params["temperature"],
+                )
 
             if st.button(label="Empty Streamlit Cache"):
                 st.cache_data.clear()
+    else:
+        _model_params = {"max_tokens": 10_000, "max_return_tokens": 1_000, "temperature": 0.2}
 
     if "backend" not in st.session_state:
         st.session_state.backend = LocalBackendAdapter(settings=Settings())
@@ -140,57 +143,6 @@ def init_session_state() -> dict:
             temperature=st.session_state.model_params["temperature"],
         )
 
-    if "s3_client" not in st.session_state:
-        if ENV["OBJECT_STORE"] == "minio":
-            st.session_state.s3_client = boto3.client(
-                "s3",
-                endpoint_url=f"http://{ENV['MINIO_HOST']}:9000",
-                aws_access_key_id=ENV["MINIO_ACCESS_KEY"],
-                aws_secret_access_key=ENV["MINIO_SECRET_KEY"],
-            )
-        elif ENV["OBJECT_STORE"] == "s3":
-            raise NotImplementedError("S3 not yet implemented")
-
-    if "available_personas" not in st.session_state:
-        st.session_state.available_personas = get_persona_names()
-
-    if "BUCKET_NAME" not in st.session_state:
-        st.session_state.BUCKET_NAME = ENV["BUCKET_NAME"]
-
-        try:
-            st.session_state.s3_client.head_bucket(Bucket=st.session_state.BUCKET_NAME)
-        except ClientError as err:
-            # The bucket does not exist or you have no access.
-            if err.response["Error"]["Code"] == "404":
-                logging.info("The bucket does not exist.")
-                st.session_state.s3_client.create_bucket(Bucket=st.session_state.BUCKET_NAME)
-                logging.info("Bucket created successfully.")
-            else:
-                raise err
-
-    if "storage_handler" not in st.session_state:
-        es = Elasticsearch(
-            hosts=[
-                {
-                    "host": ENV["ELASTIC__HOST"],
-                    "port": int(ENV["ELASTIC__PORT"]),
-                    "scheme": ENV["ELASTIC__SCHEME"],
-                }
-            ],
-            basic_auth=(ENV["ELASTIC__USER"], ENV["ELASTIC__PASSWORD"]),
-        )
-        st.session_state.storage_handler = ElasticsearchStorageHandler(es_client=es, root_index="redbox-data")
-
-    else:
-        _model_params = {"max_tokens": 10_000, "max_return_tokens": 1_000, "temperature": 0.2}
-
-    if "llm" not in st.session_state or "llm_handler" not in st.session_state:
-        load_llm_handler(
-            ENV=ENV,
-        )
-
-    # check we have all expected data folders
-
     if "llm_logger_callback" not in st.session_state:
         logfile = os.path.join(
             "llm_logs",
@@ -198,12 +150,6 @@ def init_session_state() -> dict:
         )
         logger.add(logfile, colorize=True, enqueue=True)
         st.session_state.llm_logger_callback = FileCallbackHandler(logfile)
-
-    if "summary" not in st.session_state:
-        st.session_state.summary = []
-
-    if "summary_of_summaries_mode" not in st.session_state:
-        st.session_state.summary_of_summaries_mode = False
 
     return ENV
 
@@ -262,52 +208,6 @@ def get_file_link(file: File, page: Optional[int] = None) -> str:
     return link_html
 
 
-def get_bedrock_client(ENV):
-    """Returns a bedrock client
-
-    Args:
-        ENV (_type_): the environment variables dictionary
-
-    Returns:
-        _type_:
-    """
-    bedrock_client = boto3.client("bedrock-runtime", region_name=ENV["REGION"])
-    return bedrock_client
-
-
-def load_llm_handler(ENV, update=False) -> None:
-    """Loads the LLM and LLMHandler into the session state
-
-    Args:
-        ENV (_type_): the environment variables dictionary
-        model_params (_type_): the model parameters
-
-    """
-
-    if "llm_handler" not in st.session_state or update:
-        st.session_state.backend.set_llm(
-            model=st.session_state.model_select,
-            max_tokens=st.session_state.model_params["max_tokens"],
-            max_return_tokens=st.session_state.model_params["max_return_tokens"],
-            temperature=st.session_state.model_params["temperature"],
-        )
-
-        st.session_state.llm_handler = st.session_state.backend._llm
-
-
-def hash_list_of_files(list_of_files: list[File]) -> str:
-    """Returns a hash of the list of files
-
-    Args:
-        list_of_files (List[File]): the list of files
-
-    Returns:
-        str: the hash of the list of files
-    """
-    hash_list = [file.text_hash for file in list_of_files]
-    return hashlib.sha256("".join(sorted(hash_list)).encode("utf-8")).hexdigest()
-
-
 class StreamlitStreamHandler(BaseCallbackHandler):
     """Callback handler for rendering LLM output to streamlit UI"""
 
@@ -317,11 +217,13 @@ class StreamlitStreamHandler(BaseCallbackHandler):
 
     def on_llm_new_token(self, token: str, **kwargs) -> None:
         """Callback for new token from LLM and append to text"""
+        del kwargs
         self.text += token
         self.text_element.write(self.text)
 
     def on_llm_end(self, response: LLMResult, **kwargs) -> None:
         """Callback for end of LLM generation to empty text"""
+        del kwargs
         self.text_element.empty()
 
     def sync(self):
@@ -407,67 +309,6 @@ class FilePreview(object):
         )
 
 
-def replace_doc_ref(
-    output_for_render: str = "",
-    files: Optional[list[File]] = None,
-    page_numbers: Optional[list] = None,
-    flexible=False,
-) -> str:
-    """Replaces references to files in the output text with links to the files
-
-    Args:
-        output_for_render (str, optional): The text to modify. Defaults to "".
-        files (List[File], optional): The files to link to. Defaults to [].
-        page_numbers (List, optional): Any page numbers to link to within files. Defaults to [].
-        flexible (bool, optional): Whether to replace edgecase references with or without spaces. Defaults to False.
-
-    Returns:
-        str: The modified text
-    """
-    files = files or []
-    page_numbers = page_numbers or []
-
-    if len(page_numbers) != len(files):
-        page_numbers = [None for _ in files]
-
-    modified_text = output_for_render
-
-    for i, file in enumerate(files):
-        page = page_numbers[i]
-        file_link = get_file_link(file=file, page=page)
-
-        strings_to_replace = [
-            f"<Doc{file.uuid}>",
-        ]
-        if flexible:
-            # For when the LLM returns a space between Doc and the uuid
-            strings_to_replace += [
-                f"<Doc {file.uuid}>",
-                f"Doc {file.uuid}",
-                f"Document {file.uuid}",
-            ]
-
-        for string_to_replace in strings_to_replace:
-            modified_text = modified_text.replace(string_to_replace, file_link)
-    return modified_text
-
-
-def eval_csv_to_squad_json(csv_path: str, json_path: str) -> None:
-    """Converts a csv file with columns 'question', 'answer', 'document' to a json file in SQuAD format.
-
-    Args:
-        csv_path (str): The path to the csv file
-        json_path (str): The path to the json file
-    """
-    df = pd.read_csv(csv_path)
-    df["uuid"] = df.apply(lambda _: uuid4(), axis=1)
-    (
-        df.rename(dict(answer="ground_truth_answer", document="document_name"), axis=1)
-        .set_index("uuid")
-        .to_json(orient="index", indent=4, path_or_buf=json_path)
-    )
-
-
 def submit_feedback(
     feedback: dict[str, str],
     input: ChatMessage | list[ChatMessage],
@@ -495,61 +336,6 @@ def submit_feedback(
     st.session_state.backend.create_feedback(feedback=feedback)
 
     st.toast("Thanks for your feedback!", icon="🙏")
-
-
-chat_personas = [
-    ChatPersona(
-        name="Policy Experts",
-        description=(
-            "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do "
-            "eiusmod tempor incididunt ut labore et dolore magna aliqua"
-        ),
-        prompt="Lorem ipsum",
-    ),
-    ChatPersona(
-        name="Economists",
-        description=(
-            "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do "
-            "eiusmod tempor incididunt ut labore et dolore magna aliqua"
-        ),
-        prompt="Lorem ipsum",
-    ),
-    ChatPersona(
-        name="Foreign Policy Experts",
-        description=(
-            "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do "
-            "eiusmod tempor incididunt ut labore et dolore magna aliqua"
-        ),
-        prompt="Lorem ipsum",
-    ),
-]
-
-
-def get_persona_names() -> list:
-    """Returns list of persona names"""
-    persona_names = []
-    for chat_persona in chat_personas:
-        persona_names.append(chat_persona.name)
-    return persona_names
-
-
-def get_persona_description(persona_name) -> str | None:
-    """Returns persona description based on persona name selected by user
-
-    Args:
-        persona_name (str): Persona name selected by user.
-    """
-
-    return next(chat_persona.description for chat_persona in chat_personas if chat_persona.name == persona_name)
-
-
-def get_persona_prompt(persona_name) -> str | None:
-    """Returns persona prompt based on persona name selected by user
-
-    Args:
-        persona_name (str): Persona name selected by user.
-    """
-    return next(chat_persona.prompt for chat_persona in chat_personas if chat_persona.name == persona_name)
 
 
 def get_document_citation_assets(document: SourceDocument) -> set[tuple[File, Optional[list[int]], str]]:

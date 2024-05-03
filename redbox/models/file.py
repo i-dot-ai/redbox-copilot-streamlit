@@ -1,6 +1,7 @@
 import ast
 import hashlib
-from enum import Enum
+from enum import StrEnum
+from typing import Optional
 from io import BytesIO
 from typing import Optional
 from uuid import UUID
@@ -14,13 +15,13 @@ from redbox.models.base import PersistableModel
 encoding = tiktoken.get_encoding("cl100k_base")
 
 
-class ProcessingStatusEnum(str, Enum):
+class ProcessingStatusEnum(StrEnum):
     chunking = "chunking"
     embedding = "embedding"
     complete = "complete"
 
 
-class ContentType(str, Enum):
+class ContentType(StrEnum):
     EML = ".eml"
     HTML = ".html"
     HTM = ".htm"

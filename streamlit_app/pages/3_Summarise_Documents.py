@@ -55,6 +55,10 @@ if "summary" not in st.session_state:
     st.session_state.summary = []
 
 
+if "summary_of_summaries_mode" not in st.session_state:
+    st.session_state.summary_of_summaries_mode = False
+
+
 def update_token_budget_tracker():
     current_token_count = 0
 

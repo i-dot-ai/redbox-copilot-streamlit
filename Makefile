@@ -1,4 +1,4 @@
-.PHONY: app reqs up down clean lint format safe checktypes precommit
+.PHONY: reqs up down clean lint format unused safe types precommit
 
 -include .env
 export
@@ -27,6 +27,10 @@ lint:
 format:
 	poetry run ruff format .
 	poetry run ruff format **/*.ipynb
+
+## Find unusued code
+unused:
+	vulture .
 
 ## Scan the codebase for safety issues
 safe:

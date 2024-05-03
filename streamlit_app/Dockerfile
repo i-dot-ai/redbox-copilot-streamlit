@@ -48,7 +48,7 @@ COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 ADD redbox/ /app/redbox
 ADD streamlit_app/ /app/streamlit_app
 
-ENV PYTHONPATH "/app"
+ENV PYTHONPATH=/app
 
 EXPOSE 8501
 
