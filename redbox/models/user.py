@@ -18,3 +18,10 @@ class User(PersistableModel):
                 if k not in ("uuid", "email", "name", "created_datetime", "creator_user_uuid")
             ]
         )
+
+    def dict_llm(self) -> dict[str, str]:
+        return {
+            k: v
+            for k, v in self.model_dump().items()
+            if k not in ("uuid", "email", "name", "created_datetime", "creator_user_uuid")
+        }

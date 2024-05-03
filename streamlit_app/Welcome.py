@@ -12,10 +12,9 @@ st.write("# Redbox Copilot")
 
 
 st.markdown(
-    """\
-    ### What can you do?
-    * [Add Documents](/Add_Documents) by uploading them
-    * [Summarise Documents](/Summarise_Documents) to extract key dates, people, actions and discussion for your principal
-    * [Ask the Box](/Ask_the_Box) will answer questions about your box's content
-"""
+    "### What can you do? \n\n"
+    "* [Add Documents](/Add_Documents) by uploading them \n"
+    "* [Summarise Documents](/Summarise_Documents) to extract key dates, "
+    "people, actions and discussion for your principal \n"
+    "* [Ask the Box](/Ask_the_Box) will answer questions about your box's content \n"
 )

@@ -1,5 +1,6 @@
 import tempfile
-from typing import Optional
+from typing import Optional, Iterable
+from datetime import datetime
 
 import markdown
 from dateutil import parser
@@ -8,7 +9,7 @@ from docx.shared import Inches
 from unstructured.partition.html import partition_html
 
 from redbox import __version__ as redbox_version
-from redbox.models import File, SummaryComplete
+from redbox.models import File, SummaryTaskComplete
 
 
 def lookup_indentedness(raw: str, line_str_to_match: str):
@@ -18,11 +19,17 @@ def lookup_indentedness(raw: str, line_str_to_match: str):
             return len(line) - len(line.lstrip(" "))
 
 
-def summary_complete_to_docx(
-    summary_complete: SummaryComplete,
-    files: list[File],
+def summary_tasks_to_docx(
+    tasks: Iterable[SummaryTaskComplete],
+    reference_files: Iterable[File],
     title: Optional[str] = None,
-):
+    created: Optional[datetime] = None,
+) -> Document:
+    if created is None:
+        created = datetime.now()
+
+    uuid_to_file_map = {f.uuid: f for f in reference_files}
+
     document = Document()
 
     document.styles["Normal"].font.name = "Arial"
@@ -40,7 +47,7 @@ def summary_complete_to_docx(
     # Add page number to header (right hand side)
 
     footer = section.footer
-    summary_datetime = parser.parse(summary_complete.created_datetime.isoformat())
+    summary_datetime = parser.parse(created.isoformat())
     footer.paragraphs[
         0
     ].text = (
@@ -55,23 +62,21 @@ def summary_complete_to_docx(
         document.add_heading("Redbox Copilot", level=0)
 
     document.add_heading("Summarised Files", level=1)
-    for file in files:
+    for file in reference_files:
         document.add_paragraph(file.name, style="List Bullet")
 
-    for task in summary_complete.tasks:
+    for task in tasks:
         document.add_heading(task.title, level=1)
 
-        uuid_to_file_map = {f.uuid: f for f in files}
-
-        raw = task.raw
-        for uuid in uuid_to_file_map.keys():
+        raw = task.response_text
+        for uuid in task.file_uuids:
             raw = raw.replace(f"<Doc{uuid}>", f"{uuid_to_file_map[uuid].name}")
             raw = raw.replace(f"</Doc{uuid}>", "")
 
             raw = raw.replace(f"Doc{uuid}", f"{uuid_to_file_map[uuid].name}")
             raw = raw.replace(f"{uuid}", f"{uuid_to_file_map[uuid].name}")
 
-        html_raw = markdown.markdown(task.raw)
+        html_raw = markdown.markdown(raw)
         temp_file = tempfile.NamedTemporaryFile(delete=True, suffix=".html")
 
         with open(temp_file.name, "w", encoding="utf-8") as f:

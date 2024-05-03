@@ -51,7 +51,7 @@ if submitted and uploaded_files is not None:  # noqa: C901
             st.stop()
 
     files: list[File] = []
-    for file_index, uploaded_file in enumerate(uploaded_files):
+    for uploaded_file in uploaded_files:
         with st.spinner(f"Uploading {uploaded_file.name}"):
             sanitised_name = uploaded_file.name
             sanitised_name = sanitised_name.replace("'", "_")

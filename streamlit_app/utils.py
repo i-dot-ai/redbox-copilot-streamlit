@@ -5,6 +5,9 @@ from uuid import UUID, uuid4
 from datetime import datetime
 from io import BytesIO
 from typing import Optional
+import logging
+import unicodedata
+import re
 
 import boto3
 import dotenv
@@ -35,6 +38,27 @@ from redbox.local import LocalBackendAdapter
 from redbox.definitions import BackendAdapter
 
 DEV_UUID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+
+
+def get_logger() -> logging.Logger:
+    logger = logging.getLogger("redbox-streamlit")
+    logger.setLevel(logging.INFO)
+
+    formatter = logging.Formatter(
+        "[%(asctime)s | %(name)s | %(levelname)s] %(message)s",
+        "%Y-%m-%d %H:%M",
+    )
+
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(formatter)
+
+    logger.addHandler(handler)
+
+    return logger
+
+
+LOG = get_logger()
 
 
 def init_session_state() -> dict:
@@ -93,6 +117,13 @@ def init_session_state() -> dict:
                     label="max_tokens",
                     min_value=0,
                     max_value=100_000,
+                    value=10_000,
+                    step=1,
+                ),
+                "max_return_tokens": st.number_input(
+                    label="max_tokens",
+                    min_value=0,
+                    max_value=5_000,
                     value=1024,
                     step=1,
                 ),
@@ -126,6 +157,7 @@ def init_session_state() -> dict:
         st.session_state.backend.set_llm(
             model=st.session_state.model_select,
             max_tokens=st.session_state.model_params["max_tokens"],
+            max_return_tokens=st.session_state.model_params["max_return_tokens"],
             temperature=st.session_state.model_params["temperature"],
         )
 
@@ -171,7 +203,7 @@ def init_session_state() -> dict:
         st.session_state.storage_handler = ElasticsearchStorageHandler(es_client=es, root_index="redbox-data")
 
     else:
-        _model_params = {"max_tokens": 4096, "temperature": 0.2}
+        _model_params = {"max_tokens": 10_000, "max_return_tokens": 1_000, "temperature": 0.2}
 
     if "llm" not in st.session_state or "llm_handler" not in st.session_state:
         load_llm_handler(
@@ -215,7 +247,11 @@ def get_link_html(page: str, text: str, query_dict: Optional[dict] = None, targe
     else:
         query = ""
 
-    return f"<a href='/{page}{query}' target={target}><button style='background-color: white;border-radius: 8px;'>{text}</button></a>"
+    return (
+        f"<a href='/{page}{query}' target={target}>"
+        f"<button style='background-color: white;border-radius: 8px;'>{text}</button>"
+        "</a>"
+    )
 
 
 def get_file_link(file: File, page: Optional[int] = None) -> str:
@@ -273,6 +309,7 @@ def load_llm_handler(ENV, update=False) -> None:
         st.session_state.backend.set_llm(
             model=st.session_state.model_select,
             max_tokens=st.session_state.model_params["max_tokens"],
+            max_return_tokens=st.session_state.model_params["max_return_tokens"],
             temperature=st.session_state.model_params["temperature"],
         )
 
@@ -484,17 +521,26 @@ def submit_feedback(
 chat_personas = [
     ChatPersona(
         name="Policy Experts",
-        description="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua",
+        description=(
+            "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do "
+            "eiusmod tempor incididunt ut labore et dolore magna aliqua"
+        ),
         prompt="Lorem ipsum",
     ),
     ChatPersona(
         name="Economists",
-        description="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna",
+        description=(
+            "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do "
+            "eiusmod tempor incididunt ut labore et dolore magna aliqua"
+        ),
         prompt="Lorem ipsum",
     ),
     ChatPersona(
         name="Foreign Policy Experts",
-        description="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore",
+        description=(
+            "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do "
+            "eiusmod tempor incididunt ut labore et dolore magna aliqua"
+        ),
         prompt="Lorem ipsum",
     ),
 ]
@@ -563,6 +609,15 @@ def change_selected_model() -> None:
     st.session_state.backend.set_llm(
         model=st.session_state.model_select,
         max_tokens=st.session_state.model_params["max_tokens"],
+        max_return_tokens=st.session_state.model_params["max_return_tokens"],
         temperature=st.session_state.model_params["temperature"],
     )
     st.toast(f"Loaded {st.session_state.model_select}")
+
+
+def slugify(text: str) -> str:
+    slug = unicodedata.normalize("NFKD", text)
+    slug = slug.encode("ascii", "ignore").lower()
+    slug = re.sub(r"[^a-z0-9]+", "-", slug).strip("-")
+    slug = re.sub(r"[-]+", "-", slug)
+    return slug

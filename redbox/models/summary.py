@@ -1,12 +1,11 @@
 from typing import Optional
+from uuid import UUID
 
-from langchain.chains.base import Chain
 from langchain.prompts import PromptTemplate
-from langchain_core.documents import Document
-from pydantic import field_serializer
+from pydantic import field_serializer, field_validator
 
 from redbox.models.base import PersistableModel
-from redbox.models.file import File
+from redbox.models.chat import ChatSource
 
 
 class SummaryTask(PersistableModel):
@@ -16,8 +15,13 @@ class SummaryTask(PersistableModel):
     # https://python.langchain.com/docs/guides/pydantic_compatibility
     prompt_template: object
 
-    def __hash__(self):
-        return hash((type(self),) + (self.id, self.title))
+    @field_validator("prompt_template")
+    @classmethod
+    def is_prompt_template(cls, v: PromptTemplate | dict) -> PromptTemplate:
+        if isinstance(v, dict):
+            return PromptTemplate(**v)
+        elif isinstance(v, PromptTemplate):
+            return v
 
     @field_serializer("prompt_template")
     def serialise_prompt(self, prompt_template: PromptTemplate, _info):
@@ -27,34 +31,22 @@ class SummaryTask(PersistableModel):
             return prompt_template
 
 
-class SummaryTaskComplete(PersistableModel):
+class SummaryTaskComplete(SummaryTask):
     id: str
     title: str
-    # langchain.chains.base.Chain needs pydantic v1, breaks
-    # https://python.langchain.com/docs/guides/pydantic_compatibility
-    chain: object
-    file_hash: str
-    raw: str
-    processed: Optional[str] = None
-
-    @field_serializer("chain")
-    def serialise_chain(self, chain: Chain, _info):
-        if isinstance(chain, Chain):
-            return chain.dict()
-        else:
-            return chain
+    file_uuids: list[UUID]
+    response_text: str
+    sources: Optional[list[ChatSource]]
 
 
-class Summary(PersistableModel):
-    files: list[File]
-    file_hash: str
+class SummaryBase(PersistableModel):
+    file_uuids: list[UUID]
+    file_hash: int
+
+
+class Summary(SummaryBase):
     tasks: list[SummaryTask]
 
-    def to_documents(self) -> list[Document]:
-        return [file.to_document() for file in self.files]
 
-
-class SummaryComplete(PersistableModel):
-    file_hash: str
-    file_uuids: list[str]
+class SummaryComplete(SummaryBase):
     tasks: list[SummaryTaskComplete]
