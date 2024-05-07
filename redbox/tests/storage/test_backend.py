@@ -173,6 +173,7 @@ class TestFiles:
         summary = backend.create_summary(file_uuids=[f.uuid for f in self.files], tasks=tasks)
         assert isinstance(summary, SummaryComplete)
         TestFiles.summary = summary
+        time.sleep(3)
 
     def test_get_summary(self, backend):
         summary = backend.get_summary(file_uuids=[f.uuid for f in self.files])
