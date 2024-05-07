@@ -63,10 +63,10 @@ jobs:
 
       - name: Run unit tests with pytest
         run: |
-          poetry run pytest
+          poetry run pytest --envfile .env
 
 
-    static_checks:
+    static-checks:
 
       runs-on: ubuntu-latest
 
