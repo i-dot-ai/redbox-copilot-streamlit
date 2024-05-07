@@ -69,9 +69,12 @@ def get_file_link(file: File, page: Optional[int] = None) -> str:
     return link_html
 
 
-def get_document_citation_assets(document: SourceDocument) -> set[tuple[File, Optional[list[int]], str]]:
+def get_document_citation_assets(document: SourceDocument) -> tuple[File, Optional[list[int]], str]:
     """Takes a SourceDocument and returns a tuple of its File, page numbers and URL."""
     file = st.session_state.backend.get_file(file_uuid=document.file_uuid)
+
+    if not isinstance(file, File):
+        raise ValueError("get_document_citation_assets did not find a File object")
 
     if document.page_numbers is None:
         url = get_file_link(file=file)
@@ -86,7 +89,9 @@ def response_to_message(response: ChatResponse) -> ChatMessage | ChatMessageSour
     sources: list[ChatSource] = []
     if response.source_documents is not None:
         for source in response.source_documents:
-            sources.append(ChatSource(document=source, html=get_document_citation_assets(source)[2]))
+            assert isinstance(source, SourceDocument)
+            chat_source = ChatSource(document=source, html=get_document_citation_assets(source)[2])
+            sources.append(chat_source)
         return ChatMessageSourced(text=response.output_text, role="ai", sources=sources)
     else:
         return ChatMessage(text=response.output_text, role="ai")

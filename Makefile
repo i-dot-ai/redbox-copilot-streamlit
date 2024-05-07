@@ -31,6 +31,7 @@ format:
 ## Find unusued code
 unused:
 	vulture .
+	deptry .
 
 ## Scan the codebase for safety issues
 safe:

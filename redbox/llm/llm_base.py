@@ -87,7 +87,7 @@ class LLMHandler(object):
         self,
         user_question: str,
         user_info: dict,
-        chat_history: Optional[list] = None,
+        chat_history: Optional[str] = None,
         callbacks: Optional[list] = None,
     ) -> dict[str, Any]:
         """Answers user question by retrieving context from content stored in
@@ -95,8 +95,8 @@ class LLMHandler(object):
 
         Args:
             user_question (str): The message or query being posed by user
-            chat_history (list, optional): The message history of the chat to
-            add context. Defaults to [].
+            chat_history (str, optional): The message history of the chat to
+            add context. Defaults to an empty string.
 
         Returns:
             dict: A dictionary with the new chat_history:list and the answer
@@ -118,7 +118,7 @@ class LLMHandler(object):
         standalone_question = condense_question_chain(
             {
                 "question": user_question,
-                "chat_history": chat_history or [],
+                "chat_history": chat_history or "",
                 # "user_info": user_info,
                 # "current_date": date.today().isoformat()
             }

@@ -6,6 +6,7 @@ from typing import Iterable, Optional
 import markdown
 from dateutil import parser
 from docx import Document
+from docx.document import Document as DocumentObject
 from docx.shared import Inches
 from unstructured.partition.html import partition_html
 
@@ -25,7 +26,7 @@ def summary_tasks_to_docx(
     reference_files: Iterable[File],
     title: Optional[str] = None,
     created: Optional[datetime] = None,
-) -> Document:
+) -> DocumentObject:
     if created is None:
         created = datetime.now()
 

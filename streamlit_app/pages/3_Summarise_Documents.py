@@ -314,7 +314,7 @@ if st.session_state.submitted:
             prompt_template=task.prompt_template,
             file_uuids=summary_file_select,
             response_text=response.text,
-            sources=response.sources,
+            sources=getattr(response, "sources", None),
             creator_user_uuid=st.session_state.backend.get_user().uuid,
         )
         st.session_state.summary.append(complete)

@@ -11,9 +11,9 @@ permissions:
 
 jobs:
     backend-test:
-  
+
       runs-on: ubuntu-latest
-  
+
       steps:
       - uses: actions/checkout@v3
 
@@ -24,21 +24,24 @@ jobs:
           tesseract-ocr
 
       - name: Install poetry
-        run: pipx install poetry
-  
+        run: |
+          pipx install poetry
+
       - name: Install python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
           cache: poetry
           cache-dependency-path: poetry.lock
-          
+
       - name: Set poetry environment
-        run: poetry env use 3.11
-  
+        run: |
+          poetry env use 3.11
+
       - name: Install dependencies
-        run: poetry install --no-root --with dev
-    
+        run: |
+          poetry install --no-root --with dev
+
       - name: Build containers
         run: |
           mkdir -p data/elastic/
@@ -49,13 +52,48 @@ jobs:
           sudo mkdir -p /app
           sudo chmod -R 777 /app
 
-          cp .env.example .env
-          echo OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} >> .env
-          
+          cp .env.example /app/.env
+          echo OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} >> /app/.env
+
           make up
-  
-      - name: Wait 60s for services to be ready
-        run: sleep 60
-  
+
+      - name: Wait 30s for services to be ready
+        run: |
+          sleep 30
+
       - name: Run unit tests with pytest
-        run: poetry run pytest
+        run: |
+          poetry run pytest
+
+
+    static_checks:
+
+      runs-on: ubuntu-latest
+
+      steps:
+      - uses: actions/checkout@v3
+
+      - name: Install poetry
+        run: pipx install poetry
+
+      - name: Install python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: poetry
+          cache-dependency-path: poetry.lock
+
+      - name: Set poetry environment
+        run: poetry env use 3.11
+
+      - name: Install dependencies
+        run: poetry install --no-root --with dev
+
+      - name: Format code
+        run: |
+          make lint
+          make format
+
+      - name: Type check
+        run: |
+          make types

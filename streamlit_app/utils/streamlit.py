@@ -2,7 +2,7 @@ import base64
 import os
 from datetime import datetime
 from io import BytesIO
-from typing import Optional
+from typing import Callable, Optional
 from uuid import UUID
 
 import dotenv
@@ -186,7 +186,8 @@ class FilePreview(object):
             file (File): The file to preview
         """
 
-        render_method = self.render_methods[file.content_type]
+        # Known mypy bug: https://github.com/python/mypy/issues/10740
+        render_method: Callable[..., None] = self.render_methods[file.content_type]  # type: ignore[assignment]
         file_bytes = self.backend.get_object(file_uuid=file.uuid)
         render_method(file, file_bytes)
 
@@ -254,7 +255,7 @@ def submit_feedback(
         creator_user_uuid (str): The uuid of the user who created the feedback
         chain (Optional[Chain], optional): The chain used to generate the output. Defaults to None.
     """
-    feedback = Feedback(
+    feedback_object = Feedback(
         input=input,
         output=output,
         feedback_type=feedback["type"],
@@ -263,7 +264,7 @@ def submit_feedback(
         creator_user_uuid=creator_user_uuid,
     )
 
-    st.session_state.backend.create_feedback(feedback=feedback)
+    st.session_state.backend.create_feedback(feedback=feedback_object)
 
     st.toast("Thanks for your feedback!", icon="🙏")
 

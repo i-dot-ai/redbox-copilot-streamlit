@@ -7,7 +7,7 @@ from uuid import UUID
 
 import tiktoken
 from langchain.schema import Document
-from pydantic import AnyUrl, BaseModel, Field, computed_field
+from pydantic import AnyUrl, BaseModel, Field, computed_field, field_validator
 
 from redbox.models.base import PersistableModel
 
@@ -122,7 +122,7 @@ class Metadata(BaseModel):
     links: Optional[list[Link]] = None
     # orig_elements: Optional[list[Element]] = None
     # page_name: Optional[str] = None
-    page_number: Optional[int | list[int]] = None
+    page_number: Optional[list[int]] = None
     # parent_id: Optional[UUID] = None
     # regex_metadata: Optional[dict[str, list[RegexMetadata]]] = None
     # section: Optional[str] = None
@@ -158,6 +158,13 @@ class Metadata(BaseModel):
             data["parent_doc_uuid"] = parent_doc_uuids_without_none[0]
         return cls(**data)
 
+    @field_validator("page_number")
+    @classmethod
+    def is_list_of_int(cls, v: Optional[int | list[int]]) -> list[int] | None:
+        if isinstance(v, int):
+            return [v]
+        return v
+
 
 class Chunk(PersistableModel):
     """Chunk of a File"""
@@ -169,10 +176,12 @@ class Chunk(PersistableModel):
     embedding: Optional[list[float]] = Field(description="the vector representation of the text", default=None)
 
     @computed_field  # type: ignore[misc]
+    @property
     def text_hash(self) -> str:
         return hashlib.md5(self.text.encode(encoding="UTF-8", errors="strict"), usedforsecurity=False).hexdigest()
 
     @computed_field  # type: ignore[misc]
+    @property
     def token_count(self) -> int:
         return len(encoding.encode(self.text))
 
@@ -198,7 +207,7 @@ class FileExistsException(Exception):
 class SourceDocument(BaseModel):
     page_content: str = Field(description="chunk text")
     file_uuid: UUID = Field(description="uuid of original file")
-    page_numbers: Optional[int | list[int]] = Field(
+    page_numbers: Optional[list[int]] = Field(
         description="page number of the file that this chunk came from", default=None
     )
 
