@@ -53,7 +53,6 @@ jobs:
           sudo chmod -R 777 /app
 
           cp .env.example .env
-          echo OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} >> .env
 
           make up
 
@@ -62,8 +61,10 @@ jobs:
           sleep 30
 
       - name: Run unit tests with pytest
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          poetry run py.test --envfile .env
+          poetry run pytest
 
 
     static-checks:
