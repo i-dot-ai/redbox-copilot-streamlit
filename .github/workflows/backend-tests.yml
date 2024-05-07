@@ -15,7 +15,7 @@ jobs:
       runs-on: ubuntu-latest
 
       steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Add dependencies for unstructured
         run: |
@@ -28,7 +28,7 @@ jobs:
           pipx install poetry
 
       - name: Install python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: poetry
@@ -52,8 +52,8 @@ jobs:
           sudo mkdir -p /app
           sudo chmod -R 777 /app
 
-          cp .env.example /app/.env
-          echo OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} >> /app/.env
+          cp .env.example .env
+          echo OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} >> .env
 
           make up
 
@@ -71,13 +71,13 @@ jobs:
       runs-on: ubuntu-latest
 
       steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install poetry
         run: pipx install poetry
 
       - name: Install python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: poetry
