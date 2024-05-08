@@ -15,15 +15,7 @@ from redbox.llm.prompts.chat import (
     STUFF_DOCUMENT_PROMPT,
     WITH_SOURCES_PROMPT,
 )
-from redbox.llm.prompts.summary import SUMMARY_COMBINATION_TASK_PROMPT
-from redbox.llm.summary.summary import (
-    key_actions_task,
-    key_discussion_task,
-    key_people_task,
-    summary_task,
-)
-from redbox.models.file import Chunk, File
-from redbox.models.summary import Summary, SummaryTask
+from redbox.models.file import Chunk
 
 
 class LLMHandler(object):
@@ -95,7 +87,7 @@ class LLMHandler(object):
         self,
         user_question: str,
         user_info: dict,
-        chat_history: Optional[list] = None,
+        chat_history: Optional[str] = None,
         callbacks: Optional[list] = None,
     ) -> dict[str, Any]:
         """Answers user question by retrieving context from content stored in
@@ -103,8 +95,8 @@ class LLMHandler(object):
 
         Args:
             user_question (str): The message or query being posed by user
-            chat_history (list, optional): The message history of the chat to
-            add context. Defaults to [].
+            chat_history (str, optional): The message history of the chat to
+            add context. Defaults to an empty string.
 
         Returns:
             dict: A dictionary with the new chat_history:list and the answer
@@ -126,7 +118,7 @@ class LLMHandler(object):
         standalone_question = condense_question_chain(
             {
                 "question": user_question,
-                "chat_history": chat_history or [],
+                "chat_history": chat_history or "",
                 # "user_info": user_info,
                 # "current_date": date.today().isoformat()
             }
@@ -194,59 +186,3 @@ class LLMHandler(object):
         )
 
         return result
-
-    def get_summary_tasks(self, files: list[File], file_hash: str) -> Summary:
-        summary = Summary(
-            files=files,
-            file_hash=file_hash,
-            tasks=[
-                summary_task,
-                key_discussion_task,
-                key_actions_task,
-                key_people_task,
-            ],
-        )
-        return summary
-
-    def run_summary_task(
-        self,
-        summary: Summary,
-        task: SummaryTask,
-        user_info: dict,
-        callbacks: Optional[list] = None,
-        map_reduce: bool = False,
-    ) -> tuple[Any, StuffDocumentsChain | MapReduceDocumentsChain]:
-        map_chain = LLMChain(llm=self.llm, prompt=task.prompt_template)  # type: ignore
-        regular_chain = StuffDocumentsChain(llm_chain=map_chain, document_variable_name="text")
-
-        reduce_chain = LLMChain(llm=self.llm, prompt=SUMMARY_COMBINATION_TASK_PROMPT)
-        combine_documents_chain = StuffDocumentsChain(llm_chain=reduce_chain, document_variable_name="text")
-        reduce_documents_chain = ReduceDocumentsChain(
-            combine_documents_chain=combine_documents_chain,
-            collapse_documents_chain=combine_documents_chain,
-            token_max=self.max_tokens,
-        )
-        map_reduce_chain = MapReduceDocumentsChain(
-            llm_chain=map_chain,
-            reduce_documents_chain=reduce_documents_chain,
-            document_variable_name="text",
-            return_intermediate_steps=False,
-        )
-
-        if map_reduce:
-            result = map_reduce_chain.run(
-                user_info=user_info,
-                current_date=date.today().isoformat(),
-                input_documents=summary.to_documents(),
-                callbacks=callbacks or [],
-            )
-            return result, map_reduce_chain
-        else:
-            result = regular_chain.run(
-                user_info=user_info,
-                current_date=date.today().isoformat(),
-                input_documents=summary.to_documents(),
-                callbacks=callbacks or [],
-            )
-
-            return result, regular_chain

@@ -1,4 +1,4 @@
-.PHONY: app reqs up down clean lint format safe checktypes precommit
+.PHONY: reqs up down rm clean lint format unused safe types precommit
 
 -include .env
 export
@@ -15,9 +15,15 @@ up:
 down:
 	docker compose down
 
+## Removes all data from data dir
+rm:
+	make down
+	find data/* \( -type f -o -type d \) ! -name '.gitkeep' -delete
+
 ## Stop the app and remove unnecesary data
 clean:
 	docker compose down -v --rmi all --remove-orphans
+	make rm
 
 ## Lint the codebase
 lint:
@@ -27,6 +33,11 @@ lint:
 format:
 	poetry run ruff format .
 	poetry run ruff format **/*.ipynb
+
+## Find unusued code
+unused:
+	vulture .
+	deptry .
 
 ## Scan the codebase for safety issues
 safe:

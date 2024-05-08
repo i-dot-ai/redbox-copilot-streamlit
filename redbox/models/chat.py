@@ -11,12 +11,12 @@ class ChatMessage(BaseModel):
 
 
 class ChatSource(BaseModel):
-    document: SourceDocument = Field(default=None, description="The source document")
-    html: str = Field(default=None, description="The formatted HTML to display the document")
+    document: SourceDocument = Field(description="The source document")
+    html: str = Field(description="The formatted HTML to display the document")
 
 
 class ChatMessageSourced(ChatMessage):
-    sources: list[ChatSource] = Field(default=None, description="The source documents")
+    sources: list[ChatSource] = Field(description="The source documents")
 
 
 class ChatRequest(BaseModel):

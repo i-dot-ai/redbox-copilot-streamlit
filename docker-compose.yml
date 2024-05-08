@@ -20,6 +20,7 @@ services:
     volumes:
       - ./data:/app/data:Z
       - ./streamlit_app:/app/streamlit_app/
+      - ./redbox:/app/redbox/
     depends_on:
       - elasticsearch
       - minio

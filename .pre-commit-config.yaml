@@ -82,8 +82,3 @@ repos:
           --skip-dirs, ./tests
           --ignore-unfixed, . # last arg indicates the path/file to scan
         ]
-
-  - repo: https://github.com/fpgmaas/deptry.git
-    rev: 0.16.1
-    hooks:
-      - id: deptry

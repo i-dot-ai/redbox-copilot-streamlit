@@ -1,8 +1,7 @@
 import logging
-import urllib.parse
 from functools import reduce
 from pathlib import Path
-from typing import Callable, Optional, Sequence
+from typing import Callable, Optional
 from uuid import UUID
 
 from langchain.prompts.prompt import PromptTemplate
@@ -10,6 +9,7 @@ from langchain.schema import Document
 from langchain_community.chat_models import ChatLiteLLM
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_elasticsearch import ElasticsearchStore
+from yarl import URL
 
 from redbox.definitions import BackendAdapter
 from redbox.llm.llm_base import LLMHandler
@@ -101,8 +101,10 @@ class LocalBackendAdapter(BackendAdapter):
 
     def create_file(self, file: UploadFile) -> File:
         """Creates, chunks and embeds a file."""
-        assert self._llm is not None
-        assert self._user is not None
+        if self._llm is None:
+            raise ValueError("LLM is not set")
+        if self._user is None:
+            raise ValueError("User is not set")
 
         # Upload
         logging.info(f"Uploading {file.uuid}")
@@ -116,20 +118,18 @@ class LocalBackendAdapter(BackendAdapter):
             Tagging=f"file_type={file_type}&user_uuid={file.creator_user_uuid}",
         )
 
-        authenticated_s3_url = self._s3.generate_presigned_url(
-            "get_object",
-            Params={"Bucket": self._settings.bucket_name, "Key": file.filename},
-            ExpiresIn=3600,
-        )
-
-        # Strip off the query string (we don't need the keys)
-        authenticated_s3_url_parsed = urllib.parse.urlparse(authenticated_s3_url)
-        simple_s3_url = urllib.parse.urljoin(authenticated_s3_url, authenticated_s3_url_parsed.path)
+        simple_s3_url = URL(
+            self._s3.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": self._settings.bucket_name, "Key": file.filename},
+                ExpiresIn=3600,
+            )
+        ).with_query("")
 
         logging.info(f"Uploaded file to {simple_s3_url}")
 
         file_uploaded = File(
-            url=simple_s3_url,
+            url=str(simple_s3_url),  # type: ignore[arg-type]
             content_type=ContentType(file_type),
             name=file.filename,
             creator_user_uuid=file.creator_user_uuid,
@@ -157,7 +157,10 @@ class LocalBackendAdapter(BackendAdapter):
 
     def get_file(self, file_uuid: UUID) -> File:
         """Gets a file object by UUID."""
-        return self._storage_handler.read_item(file_uuid, model_type="File")
+        file = self._storage_handler.read_item(file_uuid, model_type="File")
+        if not isinstance(file, File):
+            raise ValueError("get_file did not return a File object")
+        return file
 
     def get_files(self, file_uuids: list[UUID]) -> list[File]:
         """Gets many file objects by UUID."""
@@ -169,11 +172,9 @@ class LocalBackendAdapter(BackendAdapter):
         file_object = self._s3.get_object(Bucket=self._settings.bucket_name, Key=file.name)
         return file_object["Body"].read()
 
-    def list_files(self) -> Sequence[File]:
+    def list_files(self) -> list[File]:
         """Lists all file objects in the system."""
-        files = self._storage_handler.read_all_items(model_type="File")
-        assert all(isinstance(file, File) for file in files)
-
+        files: list[File] = self._storage_handler.read_all_items(model_type="File")
         return files
 
     def delete_file(self, file_uuid: UUID) -> File:
@@ -192,13 +193,13 @@ class LocalBackendAdapter(BackendAdapter):
 
         return file
 
-    def get_file_chunks(self, file_uuid: UUID) -> Sequence[Chunk]:
+    def get_file_chunks(self, file_uuid: UUID) -> list[Chunk]:
         """Gets a file's chunks by UUID."""
         logging.info(f"getting chunks for file {file_uuid}")
         chunks = self._storage_handler.get_file_chunks(file_uuid)
         return chunks
 
-    def get_file_as_documents(self, file_uuid: UUID, max_tokens: int) -> Sequence[Document]:
+    def get_file_as_documents(self, file_uuid: UUID, max_tokens: int) -> list[Document]:
         """Gets a file as LangChain Documents, splitting it by max_tokens."""
         documents: list[Document] = []
         chunks = self.get_file_chunks(file_uuid=file_uuid)
@@ -214,9 +215,9 @@ class LocalBackendAdapter(BackendAdapter):
                     metadata=reduce(Metadata.merge, metadata),
                 )
                 documents.append(document)
-                token_count: int = 0
-                page_content: list[str] = []
-                metadata: list[Metadata] = []
+                token_count = 0
+                page_content = []
+                metadata = []
 
             page_content.append(chunk.text)
             metadata.append(chunk.metadata)
@@ -251,7 +252,8 @@ class LocalBackendAdapter(BackendAdapter):
 
     def create_tag(self, name: str) -> Tag:
         """Creates a new tag with the given name."""
-        assert self._user is not None
+        if self._user is None:
+            raise ValueError("User is not set")
 
         tag = Tag(name=name, files=set(), creator_user_uuid=self.get_user().uuid)
         self._storage_handler.write_item(item=tag)
@@ -259,7 +261,10 @@ class LocalBackendAdapter(BackendAdapter):
 
     def get_tag(self, tag_uuid: UUID) -> Tag:
         """Gets a tag object by UUID."""
-        return self._storage_handler.read_item(item_uuid=tag_uuid, model_type="Tag")
+        tag = self._storage_handler.read_item(item_uuid=tag_uuid, model_type="Tag")
+        if not isinstance(tag, Tag):
+            raise ValueError("get_tag did not return a Tag object")
+        return tag
 
     def add_files_to_tag(self, file_uuids: list[UUID], tag_uuid: UUID) -> Tag:
         """Adds files to the specified tag by UUID."""
@@ -276,11 +281,9 @@ class LocalBackendAdapter(BackendAdapter):
         self._storage_handler.update_item(item=tag)
         return tag
 
-    def list_tags(self) -> Sequence[Tag]:
+    def list_tags(self) -> list[Tag]:
         """Lists all tag objects in the system."""
-        tags = self._storage_handler.read_all_items(model_type="Tag")
-        assert all(isinstance(tag, Tag) for tag in tags)
-
+        tags: list[Tag] = self._storage_handler.read_all_items(model_type="Tag")
         return tags
 
     def delete_tag(self, tag_uuid: UUID) -> Tag:
@@ -293,7 +296,8 @@ class LocalBackendAdapter(BackendAdapter):
 
     def create_summary(self, file_uuids: list[UUID], tasks: list[SummaryTaskComplete]) -> SummaryComplete:
         """Creates a new summary with the given files and tasks."""
-        assert self._user is not None
+        if self._user is None:
+            raise ValueError("User is not set")
 
         summary = SummaryComplete(
             file_hash=hash(tuple(sorted(file_uuids))),
@@ -315,18 +319,19 @@ class LocalBackendAdapter(BackendAdapter):
 
         return None
 
-    def list_summaries(self) -> Sequence[SummaryComplete]:
+    def list_summaries(self) -> list[SummaryComplete]:
         """Lists all summary objects in the system."""
-        summaries = self._storage_handler.read_all_items(model_type="SummaryComplete")
-        assert all(isinstance(summary, SummaryComplete) for summary in summaries)
-
+        summaries: list[SummaryComplete] = self._storage_handler.read_all_items(model_type="SummaryComplete")
         return summaries
 
     def delete_summary(self, file_uuids: list[UUID]) -> SummaryComplete:
         """Deletes a summary object by UUID."""
         summary = self.get_summary(file_uuids=file_uuids)
-        self._storage_handler.delete_item(item=summary)
-        return summary
+        if summary is not None:
+            self._storage_handler.delete_item(item=summary)
+            return summary
+        else:
+            raise ValueError("Summary not found for file_uuids")
 
     # region LLM ====================
 
@@ -366,14 +371,15 @@ class LocalBackendAdapter(BackendAdapter):
 
     def get_llm(self) -> LLMHandler:
         """Gets the LLM currently in use."""
+        if self._llm is None:
+            raise ValueError("LLM is not set")
         return self._llm
-
-    def simple_chat(self, chat_request: ChatRequest) -> ChatResponse:
-        """Given a chat history, have the LLM respond."""
-        pass
 
     def rag_chat(self, chat_request: ChatRequest, callbacks: Optional[list[Callable]] = None) -> ChatResponse:
         """Given a chat history, have the LLM respond with reference to files in the box."""
+        if self._llm is None:
+            raise ValueError("LLM is not set")
+
         *previous_history, question = chat_request.message_history
 
         formatted_history = "\n".join([f"{msg.role}: {msg.text}" for msg in previous_history])
@@ -400,6 +406,9 @@ class LocalBackendAdapter(BackendAdapter):
         Will put the contents of the files directly into the LLM's context window. Will
         fail if more tokens are needed than the LLM can cope with.
         """
+        if self._llm is None:
+            raise ValueError("LLM is not set")
+
         documents: list[Document] = []
         for file_uuid in file_uuids:
             chunks = self.get_file_chunks(file_uuid=file_uuid)
@@ -433,6 +442,9 @@ class LocalBackendAdapter(BackendAdapter):
         Will first summarise the documents one by one with the map prompt, then summarise
         those summaries with the reduce prompt.
         """
+        if self._llm is None:
+            raise ValueError("LLM is not set")
+
         # Create documents under max_tokens size
         documents: list[Document] = []
         for file_uuid in file_uuids:

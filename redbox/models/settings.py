@@ -1,11 +1,15 @@
-from typing import Literal, Optional
+from typing import TYPE_CHECKING, Literal, Optional
 
 import boto3
-from botocore.client import BaseClient
 from botocore.exceptions import ClientError
 from elasticsearch import Elasticsearch
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+if TYPE_CHECKING:
+    from mypy_boto3_s3.client import S3Client
+else:
+    S3Client = object
 
 
 class ElasticLocalSettings(BaseModel):
@@ -94,7 +98,7 @@ class Settings(BaseSettings):
         es = Elasticsearch(cloud_id=self.elastic.cloud_id, api_key=self.elastic.api_key)
         return es
 
-    def s3_client(self) -> BaseClient:
+    def s3_client(self) -> S3Client:
         if self.object_store == "minio":
             client = boto3.client(
                 "s3",
@@ -128,7 +132,7 @@ class Settings(BaseSettings):
         try:
             client.create_bucket(
                 Bucket=self.bucket_name,
-                CreateBucketConfiguration={"LocationConstraint": self.aws_region},
+                CreateBucketConfiguration={"LocationConstraint": self.aws_region},  # type: ignore[typeddict-item]
             )
         except ClientError as e:
             if e.response["Error"]["Code"] != "BucketAlreadyOwnedByYou":

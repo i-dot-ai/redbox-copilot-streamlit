@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Optional, Sequence
+from typing import Optional, Type, TypeVar
 from uuid import UUID
 
 from elastic_transport import ObjectApiResponse
@@ -11,6 +11,8 @@ from pydantic import ValidationError
 from redbox.models import Chunk, ChunkStatus, FileStatus, ProcessingStatusEnum
 from redbox.models.base import PersistableModel
 from redbox.storage.storage_handler import BaseStorageHandler
+
+Persistable = TypeVar("Persistable", bound=PersistableModel)
 
 
 class ElasticsearchStorageHandler(BaseStorageHandler):
@@ -33,7 +35,7 @@ class ElasticsearchStorageHandler(BaseStorageHandler):
     def refresh(self, index: str = "*") -> ObjectApiResponse:
         return self.es_client.indices.refresh(index=f"{self.root_index}-{index}")
 
-    def write_item(self, item: PersistableModel) -> ObjectApiResponse:
+    def write_item(self, item: Persistable) -> ObjectApiResponse:
         target_index = f"{self.root_index}-{item.model_type.lower()}"
 
         resp = self.es_client.index(
@@ -43,17 +45,17 @@ class ElasticsearchStorageHandler(BaseStorageHandler):
         )
         return resp
 
-    def write_items(self, items: Sequence[PersistableModel]) -> Sequence[ObjectApiResponse]:
+    def write_items(self, items: list[Persistable]) -> list[ObjectApiResponse]:
         return list(map(self.write_item, items))
 
-    def read_item(self, item_uuid: UUID, model_type: str):
+    def read_item(self, item_uuid: UUID, model_type: str) -> Type[PersistableModel]:
         target_index = f"{self.root_index}-{model_type.lower()}"
         result = self.es_client.get(index=target_index, id=str(item_uuid))
         model = self.get_model_by_model_type(model_type)
         item = model(**result.body["_source"])
         return item
 
-    def read_items(self, item_uuids: Sequence[UUID], model_type: str):
+    def read_items(self, item_uuids: list[UUID], model_type: str) -> list[Persistable]:
         target_index = f"{self.root_index}-{model_type.lower()}"
         result = self.es_client.mget(index=target_index, body={"ids": list(map(str, item_uuids))})
 
@@ -62,7 +64,7 @@ class ElasticsearchStorageHandler(BaseStorageHandler):
 
         return items
 
-    def update_item(self, item: PersistableModel) -> ObjectApiResponse:
+    def update_item(self, item: Persistable) -> ObjectApiResponse:
         target_index = f"{self.root_index}-{item.model_type.lower()}"
 
         resp = self.es_client.index(
@@ -72,15 +74,15 @@ class ElasticsearchStorageHandler(BaseStorageHandler):
         )
         return resp
 
-    def update_items(self, items: Sequence[PersistableModel]) -> Sequence[ObjectApiResponse]:
+    def update_items(self, items: list[Persistable]) -> list[ObjectApiResponse]:
         return list(map(self.update_item, items))
 
-    def delete_item(self, item: PersistableModel) -> ObjectApiResponse:
+    def delete_item(self, item: Persistable) -> ObjectApiResponse:
         target_index = f"{self.root_index}-{item.model_type.lower()}"
         result = self.es_client.delete(index=target_index, id=str(item.uuid))
         return result
 
-    def delete_items(self, items: Sequence[PersistableModel]) -> Optional[ObjectApiResponse]:
+    def delete_items(self, items: list[Persistable]) -> Optional[ObjectApiResponse]:
         if not items:
             return None
 
@@ -93,7 +95,7 @@ class ElasticsearchStorageHandler(BaseStorageHandler):
         )
         return result
 
-    def read_all_items(self, model_type: str) -> Sequence[PersistableModel]:
+    def read_all_items(self, model_type: str) -> list[Persistable]:
         target_index = f"{self.root_index}-{model_type.lower()}"
         try:
             result = scan(
@@ -122,7 +124,7 @@ class ElasticsearchStorageHandler(BaseStorageHandler):
                 logging.error(e)
         return items
 
-    def list_all_items(self, model_type: str) -> Sequence[UUID]:
+    def list_all_items(self, model_type: str) -> list[UUID]:
         target_index = f"{self.root_index}-{model_type.lower()}"
         try:
             # Only return _id
@@ -139,7 +141,7 @@ class ElasticsearchStorageHandler(BaseStorageHandler):
         uuids = [UUID(item["_id"]) for item in results]
         return uuids
 
-    def get_file_chunks(self, parent_file_uuid: UUID) -> Sequence[Chunk]:
+    def get_file_chunks(self, parent_file_uuid: UUID) -> list[Chunk]:
         """get chunks for a given file"""
         target_index = f"{self.root_index}-chunk"
 
@@ -153,7 +155,7 @@ class ElasticsearchStorageHandler(BaseStorageHandler):
         ]
         return res
 
-    def _get_child_chunks(self, parent_file_uuid: UUID) -> Sequence[UUID]:
+    def _get_child_chunks(self, parent_file_uuid: UUID) -> list[UUID]:
         target_index = f"{self.root_index}-chunk"
 
         matched_chunk_ids = [
@@ -168,7 +170,7 @@ class ElasticsearchStorageHandler(BaseStorageHandler):
 
         return matched_chunk_ids
 
-    def _get_embedded_child_chunks(self, parent_file_uuid: UUID) -> Sequence[UUID]:
+    def _get_embedded_child_chunks(self, parent_file_uuid: UUID) -> list[UUID]:
         target_index = f"{self.root_index}-chunk"
         matched_embedded_chunk_ids = [
             UUID(x["_id"])

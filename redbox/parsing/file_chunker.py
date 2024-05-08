@@ -1,15 +1,21 @@
-from botocore.client import BaseClient
+from typing import TYPE_CHECKING
+
 from langchain_core.embeddings.embeddings import Embeddings
 
 from redbox.models.file import Chunk, ContentType, File
 from redbox.parsing.chunk_clustering import cluster_chunks
 from redbox.parsing.chunkers import other_chunker
 
+if TYPE_CHECKING:
+    from mypy_boto3_s3.client import S3Client
+else:
+    S3Client = object
+
 
 class FileChunker:
     """A class to wrap unstructured and generate compliant chunks from files"""
 
-    def __init__(self, s3_client: BaseClient, bucket_name: str, embedding_model: Embeddings = None):
+    def __init__(self, s3_client: S3Client, bucket_name: str, embedding_model: Embeddings):
         self.supported_file_types = [content_type.value for content_type in ContentType]
         self.embedding_model = embedding_model
         self.s3_client = s3_client
@@ -37,14 +43,5 @@ class FileChunker:
 
         if chunk_clustering:
             chunks = cluster_chunks(chunks, embedding_model=self.embedding_model)
-
-        # Ensure page numbers are a list for schema compliance
-        for chunk in chunks:
-            if "page_number" in chunk.metadata:
-                if isinstance(chunk.metadata["page_number"], int):
-                    chunk.metadata["page_numbers"] = [chunk.metadata["page_number"]]
-                elif isinstance(chunk.metadata["page_number"], list):
-                    chunk.metadata["page_numbers"] = chunk.metadata["page_number"]
-                del chunk.metadata["page_number"]
 
         return chunks
