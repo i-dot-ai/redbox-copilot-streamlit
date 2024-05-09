@@ -7,10 +7,11 @@ from uuid import UUID
 import streamlit as st
 from streamlit_feedback import streamlit_feedback
 
+from redbox.api import APIBackend
 from redbox.export.docx import summary_tasks_to_docx
 from redbox.llm.prompts.summary import SUMMARY_COMBINATION_TASK_PROMPT
 from redbox.llm.summary import summary
-from redbox.models import ChatMessage, ChatMessageSourced, File, SummaryTaskComplete
+from redbox.models import ChatMessage, ChatMessageSourced, File, Settings, SummaryTaskComplete
 from streamlit_app.utils import (
     StreamlitStreamHandler,
     change_selected_model,
@@ -25,7 +26,7 @@ st.set_page_config(page_title="Redbox Copilot - Ask the Box", page_icon="📮", 
 # region Global and session state variables, functions ====================
 
 with st.spinner("Loading..."):
-    ENV = init_session_state()
+    ENV = init_session_state(backend=APIBackend(settings=Settings()))
     FEEDBACK_KWARGS = {
         "feedback_type": "thumbs",
         "optional_text_label": "What did you think of this response?",

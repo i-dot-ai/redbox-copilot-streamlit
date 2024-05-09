@@ -1,12 +1,15 @@
 import streamlit as st
 from utils import init_session_state
 
+from redbox.api import APIBackend
+from redbox.models import Settings
+
 st.set_page_config(
     page_title="Redbox Copilot",
     page_icon="📮",
 )
 
-ENV = init_session_state()
+ENV = init_session_state(backend=APIBackend(settings=Settings()))
 
 st.write("# Redbox Copilot")
 

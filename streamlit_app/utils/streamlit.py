@@ -1,6 +1,7 @@
 import base64
 import os
 from datetime import datetime
+from functools import lru_cache
 from io import BytesIO
 from typing import Callable, Optional
 from uuid import UUID
@@ -15,14 +16,18 @@ from langchain.schema.output import LLMResult
 from loguru import logger
 from lxml.html.clean import Cleaner
 
-from redbox.definitions import BackendAdapter
-from redbox.local import LocalBackendAdapter
-from redbox.models import ChatMessage, Feedback, File, Settings
+from redbox.definitions import Backend
+from redbox.models import ChatMessage, Feedback, File
 
 
-def init_session_state() -> dict:
+@lru_cache(maxsize=None)
+def init_session_state(backend: Backend) -> dict:
     """
     Initialise the session state and return the environment variables
+
+    Args:
+        backend: a class that meets the Backend protocol
+        settings: a valid Settings object
 
     Returns:
         dict: the environment variables dictionary
@@ -109,7 +114,7 @@ def init_session_state() -> dict:
         _model_params = {"max_tokens": 10_000, "max_return_tokens": 1_000, "temperature": 0.2}
 
     if "backend" not in st.session_state:
-        st.session_state.backend = LocalBackendAdapter(settings=Settings())
+        st.session_state.backend = backend
 
         st.session_state.backend.set_user(
             uuid=UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
@@ -164,7 +169,7 @@ class StreamlitStreamHandler(BaseCallbackHandler):
 class FilePreview(object):
     """Class for rendering files to streamlit UI"""
 
-    def __init__(self, backend: BackendAdapter):
+    def __init__(self, backend: Backend):
         self.cleaner = Cleaner()
         self.cleaner.javascript = True
         self.backend = backend
