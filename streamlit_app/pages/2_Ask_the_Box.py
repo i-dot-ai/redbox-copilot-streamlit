@@ -4,9 +4,8 @@ from datetime import date, datetime
 import streamlit as st
 from streamlit_feedback import streamlit_feedback
 
-from redbox.api import APIBackend
 from redbox.llm.prompts.core import CORE_REDBOX_PROMPT
-from redbox.models import ChatMessage, ChatRequest, ChatResponse, Settings
+from redbox.models import ChatMessage, ChatRequest, ChatResponse
 from streamlit_app.utils import (
     StreamlitStreamHandler,
     change_selected_model,
@@ -21,7 +20,7 @@ st.set_page_config(page_title="Redbox Copilot - Ask the Box", page_icon="📮", 
 # region Global and session state variables, functions ====================
 
 with st.spinner("Loading..."):
-    ENV = init_session_state(backend=APIBackend(settings=Settings()))
+    ENV = init_session_state()
     AVATAR_MAP = {"human": "🧑‍💻", "ai": "📮", "user": "🧑‍💻", "assistant": "📮"}
     FEEDBACK_KWARGS = {
         "feedback_type": "thumbs",

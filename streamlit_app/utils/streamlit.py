@@ -16,12 +16,12 @@ from langchain.schema.output import LLMResult
 from loguru import logger
 from lxml.html.clean import Cleaner
 
-from redbox.definitions import Backend
-from redbox.models import ChatMessage, Feedback, File
+from redbox.api import APIBackend
+from redbox.models import ChatMessage, Feedback, File, Settings
 
 
 @lru_cache(maxsize=None)
-def init_session_state(backend: Backend) -> dict:
+def init_session_state() -> dict:
     """
     Initialise the session state and return the environment variables
 
@@ -114,7 +114,7 @@ def init_session_state(backend: Backend) -> dict:
         _model_params = {"max_tokens": 10_000, "max_return_tokens": 1_000, "temperature": 0.2}
 
     if "backend" not in st.session_state:
-        st.session_state.backend = backend
+        st.session_state.backend = APIBackend(settings=Settings())
 
         st.session_state.backend.set_user(
             uuid=UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
@@ -169,7 +169,7 @@ class StreamlitStreamHandler(BaseCallbackHandler):
 class FilePreview(object):
     """Class for rendering files to streamlit UI"""
 
-    def __init__(self, backend: Backend):
+    def __init__(self, backend: APIBackend):
         self.cleaner = Cleaner()
         self.cleaner.javascript = True
         self.backend = backend

@@ -2,13 +2,11 @@ from uuid import UUID
 
 import streamlit as st
 
-from redbox.api import APIBackend
-from redbox.models import Settings
 from streamlit_app.utils import FilePreview, init_session_state
 
 st.set_page_config(page_title="Redbox Copilot - Preview Files", page_icon="📮", layout="wide")
 
-ENV = init_session_state(backend=APIBackend(settings=Settings()))
+ENV = init_session_state()
 file_preview = FilePreview(backend=st.session_state.backend)
 
 

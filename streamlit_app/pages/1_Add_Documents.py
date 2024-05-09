@@ -3,13 +3,12 @@ from uuid import UUID
 
 import streamlit as st
 
-from redbox.api import APIBackend
-from redbox.models import ContentType, File, Settings, UploadFile
+from redbox.models import ContentType, File, UploadFile
 from streamlit_app.utils import init_session_state
 
 st.set_page_config(page_title="Redbox Copilot - Add Documents", page_icon="📮", layout="wide")
 
-ENV = init_session_state(backend=APIBackend(settings=Settings()))
+ENV = init_session_state()
 
 tags = st.session_state.backend.list_tags()
 
