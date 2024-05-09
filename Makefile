@@ -9,11 +9,11 @@ reqs:
 
 ## Start the app
 up:
-	docker compose up -d elasticsearch minio streamlit-app --build
+	docker compose -p redbox-copilot-streamlit --profile frontend --profile backend-core up --build --detach
 
 ## Stop the app
 down:
-	docker compose down
+	docker compose -p redbox-copilot-streamlit down
 
 ## Removes all data from data dir
 rm:
