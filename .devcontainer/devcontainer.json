@@ -1,6 +1,5 @@
-
 {
-  "image": "python:3.11-buster",
+  "image": "python:3.11-bookworm",
   "postCreateCommand": "apt update && apt install libgl-dev libmagic-dev poppler-utils tesseract-ocr -y && chmod 777 data/elastic && poetry install",
   "name": "redbox-streamlit-dev",
   "features": {

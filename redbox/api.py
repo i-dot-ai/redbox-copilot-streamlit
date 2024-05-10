@@ -11,7 +11,7 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_elasticsearch import ElasticsearchStore
 from yarl import URL
 
-from redbox.definitions import BackendAdapter
+from redbox.definitions import Backend
 from redbox.llm.llm_base import LLMHandler
 from redbox.models import (
     ChatRequest,
@@ -34,7 +34,7 @@ from redbox.parsing.file_chunker import FileChunker
 from redbox.storage.elasticsearch import ElasticsearchStorageHandler
 
 
-class LocalBackendAdapter(BackendAdapter):
+class APIBackend(Backend):
     def __init__(self, settings: Settings):
         # Settings
         self._settings: Settings = settings
@@ -93,8 +93,11 @@ class LocalBackendAdapter(BackendAdapter):
         )
         return self._user
 
-    def get_user(self):
+    def get_user(self) -> User:
         """Gets the user attribute."""
+        if self._user is None:
+            raise ValueError("User is not set")
+
         return self._user
 
     # region FILES ====================

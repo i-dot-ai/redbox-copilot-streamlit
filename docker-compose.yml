@@ -7,6 +7,8 @@ services:
       - ./:/app/:z
   streamlit-app:
     image: redbox-streamlit-app:latest
+    profiles:
+      - frontend
     build:
       context: .
       dockerfile: ./streamlit_app/Dockerfile
@@ -29,8 +31,33 @@ services:
       - minio
     networks:
       - redbox-app-network
+  core-api:
+    image: redbox-core-api:latest
+    profiles:
+      - backend-core
+    build:
+      context: https://github.com/i-dot-ai/redbox-copilot.git
+      dockerfile: ./core_api/Dockerfile
+      args:
+        - EMBEDDING_MODEL=${EMBEDDING_MODEL:-}
+    ports:
+      - 5002:5002
+    environment:
+      - PORT=5002
+    env_file:
+      - .env
+    networks:
+      - redbox-app-network
+    depends_on:
+      - elasticsearch
+      - minio
+      - redis
+    restart: unless-stopped
   minio:
     image: minio/minio
+    profiles:
+      - backend-core
+      - backend-local
     expose:
       - "9000"
       - "9001"
@@ -47,6 +74,9 @@ services:
       - ./data/objectstore:/data
   elasticsearch:
     image: elasticsearch:8.12.0
+    profiles:
+      - backend-core
+      - backend-local
     volumes:
       - ./data/elastic/:/usr/share/elasticsearch/data:Z
     ports:
@@ -64,6 +94,19 @@ services:
     networks:
       - redbox-app-network
     restart: unless-stopped
+  redis:
+    image: redis:7-alpine
+    profiles:
+      - backend-core
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis:/data/redis
+    env_file:
+      - .env
+    networks:
+      - redbox-app-network
 
 networks:
   redbox-app-network:

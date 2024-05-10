@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Literal, Optional
+from typing import TYPE_CHECKING, Optional
 
 import boto3
 from botocore.exceptions import ClientError
@@ -69,14 +69,6 @@ class Settings(BaseSettings):
     redis_port: int = 6379
 
     dev_mode: bool = False
-    django_settings_module: str = "redbox_app.settings"
-    debug: bool = True
-    django_secret_key: str
-    environment: Literal["LOCAL"] = "LOCAL"
-    postgres_user: str = "redbox-core"
-    postgres_db: str = "redbox-core"
-    postgres_password: str
-    postgres_host: str = "db"
     contact_email: str = "test@example.com"
     core_api_host: str = "http://core-api"
     core_api_port: int = 5002

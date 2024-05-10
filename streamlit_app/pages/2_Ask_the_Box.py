@@ -5,7 +5,7 @@ import streamlit as st
 from streamlit_feedback import streamlit_feedback
 
 from redbox.llm.prompts.core import CORE_REDBOX_PROMPT
-from redbox.models.chat import ChatMessage, ChatRequest, ChatResponse
+from redbox.models import ChatMessage, ChatRequest, ChatResponse
 from streamlit_app.utils import (
     StreamlitStreamHandler,
     change_selected_model,

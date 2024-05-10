@@ -21,7 +21,7 @@ from redbox.models import (
 )
 
 
-class BackendAdapter(ABC):
+class Backend(ABC):
     @property
     @abstractmethod
     def status(self) -> dict[str, bool]:
@@ -42,7 +42,7 @@ class BackendAdapter(ABC):
         ...
 
     @abstractmethod
-    def get_user(self):
+    def get_user(self) -> User:
         """Gets the user attribute."""
         ...
 

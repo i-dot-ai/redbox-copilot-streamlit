@@ -3,8 +3,7 @@ from uuid import UUID
 
 import streamlit as st
 
-from redbox.models import ContentType, File
-from redbox.models.file import UploadFile
+from redbox.models import ContentType, File, UploadFile
 from streamlit_app.utils import init_session_state
 
 st.set_page_config(page_title="Redbox Copilot - Add Documents", page_icon="📮", layout="wide")
