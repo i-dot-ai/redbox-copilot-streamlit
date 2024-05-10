@@ -51,10 +51,10 @@ def get_file_link(file: File, page: Optional[int] = None) -> str:
         _type_: _description_
     """
     # we need to refer to files by their uuid instead
-    if len(file.name) > 45:
-        presentation_name = file.name[:45] + "..."
+    if len(file.key) > 45:
+        presentation_name = file.key[:45] + "..."
     else:
-        presentation_name = file.name
+        presentation_name = file.key
 
     query_dict = {"file_uuid": str(file.uuid)}
     if page is not None:

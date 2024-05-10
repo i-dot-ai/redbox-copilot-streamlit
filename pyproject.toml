@@ -92,6 +92,8 @@ pydantic-settings = "^2.2.1"
 langchain-elasticsearch = "^0.1.3"
 yarl = "^1.9.4"
 
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+aiohttp = "^3.9.5"
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.1.1"
 pytest-mock = "^3.14.0"

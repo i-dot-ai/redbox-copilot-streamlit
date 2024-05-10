@@ -1,9 +1,11 @@
+import ast
 import logging
 from functools import reduce
 from pathlib import Path
 from typing import Callable, Optional
 from uuid import UUID
 
+import requests
 from langchain.prompts.prompt import PromptTemplate
 from langchain.schema import Document
 from langchain_community.chat_models import ChatLiteLLM
@@ -17,7 +19,6 @@ from redbox.models import (
     ChatRequest,
     ChatResponse,
     Chunk,
-    ContentType,
     Feedback,
     File,
     FileStatus,
@@ -38,6 +39,9 @@ class APIBackend(Backend):
     def __init__(self, settings: Settings):
         # Settings
         self._settings: Settings = settings
+
+        # API
+        self._client = URL(self._settings.core_api_host).with_port(self._settings.core_api_port)
 
         # Storage
         self._es = self._settings.elasticsearch_client()
@@ -112,51 +116,35 @@ class APIBackend(Backend):
         # Upload
         logging.info(f"Uploading {file.uuid}")
 
-        file_type = Path(file.filename).suffix
+        file_type = Path(file.filename).suffix.lower()
 
-        self._s3.put_object(
+        self._s3.upload_fileobj(
             Bucket=self._settings.bucket_name,
-            Body=file.file,
+            Fileobj=file.file,
             Key=file.filename,
-            Tagging=f"file_type={file_type}&user_uuid={file.creator_user_uuid}",
+            ExtraArgs={"Tagging": f"file_type={file_type}&user_uuid={file.creator_user_uuid}"},
         )
 
-        simple_s3_url = URL(
-            self._s3.generate_presigned_url(
-                "get_object",
-                Params={"Bucket": self._settings.bucket_name, "Key": file.filename},
-                ExpiresIn=3600,
-            )
-        ).with_query("")
+        # Chunk, save and index
 
-        logging.info(f"Uploaded file to {simple_s3_url}")
+        bearer_token = self.get_user().get_bearer_token(key=self._settings.streamlit_secret_key)
 
-        file_uploaded = File(
-            url=str(simple_s3_url),  # type: ignore[arg-type]
-            content_type=ContentType(file_type),
-            name=file.filename,
-            creator_user_uuid=file.creator_user_uuid,
+        response = requests.post(
+            str(self._client / "file"),
+            json={
+                "key": file.filename,
+                "bucket": self._settings.bucket_name,
+            },
+            headers={"Authorization": bearer_token},
+            timeout=10,
         )
 
-        # Chunk
-        logging.info(f"Chunking {file.uuid}")
+        if response.status_code != 200:
+            logging.warn(f"{file.uuid} generated response {response.status_code}")
 
-        chunks = self._file_publisher.chunk_file(file_uploaded)
+        response_dict = ast.literal_eval(response.content.decode("utf-8"))
 
-        # Save
-        logging.info(f"Saving {file.uuid}")
-
-        self._storage_handler.write_item(file_uploaded)
-        self._storage_handler.write_items(chunks)
-
-        # Index
-        logging.info(f"Indexing {file.uuid}")
-
-        self._llm.add_chunks_to_vector_store(chunks=chunks)
-
-        logging.info(f"{file.uuid} complete!")
-
-        return file_uploaded
+        return File(**response_dict)
 
     def get_file(self, file_uuid: UUID) -> File:
         """Gets a file object by UUID."""
@@ -172,7 +160,7 @@ class APIBackend(Backend):
     def get_object(self, file_uuid: UUID) -> bytes:
         """Gets a raw file blob by UUID."""
         file = self.get_file(file_uuid=file_uuid)
-        file_object = self._s3.get_object(Bucket=self._settings.bucket_name, Key=file.name)
+        file_object = self._s3.get_object(Bucket=self._settings.bucket_name, Key=file.key)
         return file_object["Body"].read()
 
     def list_files(self) -> list[File]:
@@ -185,7 +173,7 @@ class APIBackend(Backend):
         file = self.get_file(file_uuid=file_uuid)
         chunks = self._storage_handler.get_file_chunks(file.uuid)
 
-        self._s3.delete_object(Bucket=self._settings.bucket_name, Key=file.name)
+        self._s3.delete_object(Bucket=self._settings.bucket_name, Key=file.key)
         self._storage_handler.delete_item(file)
         self._storage_handler.delete_items(chunks)
 
@@ -237,8 +225,18 @@ class APIBackend(Backend):
 
     def get_file_status(self, file_uuid: UUID) -> FileStatus:
         """Gets the processing status of a file."""
-        status = self._storage_handler.get_file_status(file_uuid)
-        return status
+        bearer_token = self.get_user().get_bearer_token(key=self._settings.streamlit_secret_key)
+
+        response = requests.get(
+            str(self._client / f"file/{file_uuid}/status"), headers={"Authorization": bearer_token}, timeout=10
+        )
+
+        if response.status_code != 200:
+            logging.warn(f"{file_uuid} generated response {response.status_code}")
+
+        response_dict = ast.literal_eval(response.content.decode("utf-8"))
+
+        return FileStatus(**response_dict)
 
     def get_supported_file_types(self) -> list[str]:
         """Shows the filetypes the system can process."""

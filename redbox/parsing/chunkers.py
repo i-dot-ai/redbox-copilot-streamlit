@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO)
 def other_chunker(file: File, s3_client: S3Client, bucket_name: str) -> list[Chunk]:
     authenticated_s3_url = s3_client.generate_presigned_url(
         "get_object",
-        Params={"Bucket": bucket_name, "Key": file.name},
+        Params={"Bucket": bucket_name, "Key": file.key},
         ExpiresIn=3600,
     )
 

@@ -110,7 +110,7 @@ def summary_to_markdown(tasks: list[SummaryTaskComplete], title: Optional[str] =
         out += "### Sources \n\n"
 
         source_files = st.session_state.backend.get_files(file_uuids=task.file_uuids)
-        source_file_bullets = " \n".join([f"* [{file.name}]({file.url})" for file in source_files])
+        source_file_bullets = " \n".join([f"* {file.key}" for file in source_files])
 
         out += f"{source_file_bullets} \n\n"
 
@@ -126,7 +126,7 @@ def summary_to_docx(tasks: list[SummaryTaskComplete], title: Optional[str] = Non
         reference_files.update(st.session_state.backend.get_files(file_uuids=task.file_uuids))
 
     if len(reference_files) == 1:
-        title = slugify(list(reference_files)[0].name)
+        title = slugify(list(reference_files)[0].key)
 
     document = summary_tasks_to_docx(tasks=tasks, reference_files=reference_files, title=title)
 

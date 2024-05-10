@@ -115,7 +115,6 @@ networks:
 volumes:
   elasticsearch:
   redbox-app-data:
-  local_postgres_data: {}
   redis:
     driver: local
   redis-insight:
