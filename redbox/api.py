@@ -2,7 +2,7 @@ import ast
 import logging
 from functools import reduce
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 from uuid import UUID
 
 import requests
@@ -140,7 +140,7 @@ class APIBackend(Backend):
         )
 
         if response.status_code != 200:
-            logging.warn(f"{file.uuid} generated response {response.status_code}")
+            logging.warning(f"{file.uuid} generated response {response.status_code}")
 
         response_dict = ast.literal_eval(response.content.decode("utf-8"))
 
@@ -148,14 +148,22 @@ class APIBackend(Backend):
 
     def get_file(self, file_uuid: UUID) -> File:
         """Gets a file object by UUID."""
-        file = self._storage_handler.read_item(file_uuid, model_type="File")
-        if not isinstance(file, File):
-            raise ValueError("get_file did not return a File object")
-        return file
+        bearer_token = self.get_user().get_bearer_token(key=self._settings.streamlit_secret_key)
+
+        response = requests.get(
+            str(self._client / f"file/{file_uuid}"), headers={"Authorization": bearer_token}, timeout=10
+        )
+
+        if response.status_code != 200:
+            logging.warning(f"{file_uuid} generated response {response.status_code}")
+
+        response_dict = ast.literal_eval(response.content.decode("utf-8"))
+
+        return File(**response_dict)
 
     def get_files(self, file_uuids: list[UUID]) -> list[File]:
         """Gets many file objects by UUID."""
-        return self._storage_handler.read_items(file_uuids, model_type="File")
+        return [self.get_file(file_uuid=file_uuid) for file_uuid in file_uuids]
 
     def get_object(self, file_uuid: UUID) -> bytes:
         """Gets a raw file blob by UUID."""
@@ -171,24 +179,40 @@ class APIBackend(Backend):
     def delete_file(self, file_uuid: UUID) -> File:
         """Deletes a file object by UUID."""
         file = self.get_file(file_uuid=file_uuid)
-        chunks = self._storage_handler.get_file_chunks(file.uuid)
-
         self._s3.delete_object(Bucket=self._settings.bucket_name, Key=file.key)
-        self._storage_handler.delete_item(file)
-        self._storage_handler.delete_items(chunks)
+
+        bearer_token = self.get_user().get_bearer_token(key=self._settings.streamlit_secret_key)
+
+        response = requests.delete(
+            str(self._client / f"file/{file_uuid}"), headers={"Authorization": bearer_token}, timeout=10
+        )
+
+        if response.status_code != 200:
+            logging.warning(f"{file_uuid} generated response {response.status_code}")
+
+        response_dict = ast.literal_eval(response.content.decode("utf-8"))
 
         for tag in self.list_tags():
             _ = self.remove_files_from_tag(file_uuids=[file.uuid], tag_uuid=tag.uuid)
             if len(tag.files) == 0:
                 _ = self.delete_tag(tag_uuid=tag.uuid)
 
-        return file
+        return File(**response_dict)
 
     def get_file_chunks(self, file_uuid: UUID) -> list[Chunk]:
         """Gets a file's chunks by UUID."""
-        logging.info(f"getting chunks for file {file_uuid}")
-        chunks = self._storage_handler.get_file_chunks(file_uuid)
-        return chunks
+        bearer_token = self.get_user().get_bearer_token(key=self._settings.streamlit_secret_key)
+
+        response = requests.get(
+            str(self._client / f"file/{file_uuid}/chunks"), headers={"Authorization": bearer_token}, timeout=10
+        )
+
+        if response.status_code != 200:
+            logging.warning(f"{file_uuid} generated response {response.status_code}")
+
+        response_list: list[dict[str, Any]] = ast.literal_eval(response.content.decode("utf-8"))
+
+        return [Chunk(**response_dict) for response_dict in response_list]
 
     def get_file_as_documents(self, file_uuid: UUID, max_tokens: int) -> list[Document]:
         """Gets a file as LangChain Documents, splitting it by max_tokens."""
@@ -197,7 +221,7 @@ class APIBackend(Backend):
 
         token_count: int = 0
         page_content: list[str] = []
-        metadata: list[Metadata] = []
+        metadata: list[Metadata | None] = []
 
         for chunk in chunks:
             if token_count + chunk.token_count >= max_tokens:
@@ -232,7 +256,7 @@ class APIBackend(Backend):
         )
 
         if response.status_code != 200:
-            logging.warn(f"{file_uuid} generated response {response.status_code}")
+            logging.warning(f"{file_uuid} generated response {response.status_code}")
 
         response_dict = ast.literal_eval(response.content.decode("utf-8"))
 

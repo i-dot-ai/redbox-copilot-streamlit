@@ -115,7 +115,12 @@ class Metadata(BaseModel):
     # url: Optional[str] = None
 
     @classmethod
-    def merge(cls, left: "Metadata", right: "Metadata") -> "Metadata":
+    def merge(cls, left: Optional["Metadata"], right: Optional["Metadata"]) -> Optional["Metadata"]:
+        if not left:
+            return right
+        if not right:
+            return left
+
         def listify(obj, field_name: str) -> list:
             field_value = getattr(obj, field_name, None)
             if isinstance(field_value, list):
@@ -137,6 +142,7 @@ class Metadata(BaseModel):
             if len(parent_doc_uuids) > 1:
                 raise ValueError("chunks do not have the same parent_doc_uuid")
             data["parent_doc_uuid"] = parent_doc_uuids_without_none[0]
+
         return cls(**data)
 
     @field_validator("page_number")
@@ -153,7 +159,7 @@ class Chunk(PersistableModel):
     parent_file_uuid: UUID = Field(description="id of the original file which this text came from")
     index: int = Field(description="relative position of this chunk in the original file")
     text: str = Field(description="chunk of the original text")
-    metadata: Metadata = Field(description="subset of the unstructured Element.Metadata object")
+    metadata: Optional[Metadata] = Field(description="subset of the unstructured Element.Metadata object")
     embedding: Optional[list[float]] = Field(description="the vector representation of the text", default=None)
 
     @computed_field  # type: ignore[misc]

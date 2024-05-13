@@ -1,6 +1,6 @@
 from typing import Optional
 
-from jose import jwt
+import jwt
 
 from redbox.models.base import PersistableModel
 
@@ -30,5 +30,5 @@ class User(PersistableModel):
 
     def get_bearer_token(self, key: str) -> str:
         """the bearer token expected by the core-api"""
-        bearer_token = jwt.encode({"user_uuid": str(self.uuid)}, key=key)
+        bearer_token = jwt.encode({"user_uuid": str(self.uuid)}, key=key, algorithm="HS512")
         return f"Bearer {bearer_token}"

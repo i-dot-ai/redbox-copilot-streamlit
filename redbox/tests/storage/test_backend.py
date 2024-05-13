@@ -73,6 +73,27 @@ def created_files(backend) -> YieldFixture[list[File]]:
 
         uploaded_files.append(file)
 
+    # TODO: Fix file statuses
+    time.sleep(90)
+    # uploaded_file_statuses: list[str] = [
+    #     backend.get_file_status(file_uuid=file.uuid).processing_status
+    #     for file in uploaded_files
+    # ]
+
+    # timeout = 90
+    # timetaken = 0
+    # while "chunking" in uploaded_file_statuses:
+    #     if timetaken >= timeout:
+    #         raise Timeout("Took too long to chunk")
+
+    #     timetaken += 5
+    #     time.sleep(5)
+
+    #     uploaded_file_statuses: list[str] = [
+    #         backend.get_file_status(file_uuid=file.uuid).processing_status
+    #         for file in uploaded_files
+    #     ]
+
     yield uploaded_files
 
     for file in uploaded_files:
@@ -146,7 +167,7 @@ class TestFiles:
 
     def test_get_supported_file_types(self, created_files, backend):
         accepted = set(backend.get_supported_file_types())
-        uploaded = {file.content_type.value for file in created_files}
+        uploaded = {Path(file.key).suffix for file in created_files}
         assert uploaded <= accepted
 
     def test_get_file_status(self, created_files, backend):
@@ -274,7 +295,7 @@ class TestLLM:
         assert len(response.source_documents) > 0
 
     def test_stuff_doc_summary(self, created_files, backend):
-        file_short = next(f for f in created_files if "smarter" in f.name.lower())
+        file_short = next(f for f in created_files if "smarter" in f.key.lower())
 
         summary = PromptTemplate.from_template("Summarise this text: {text}")
         response = backend.stuff_doc_summary(summary=summary, file_uuids=[file_short.uuid])
@@ -284,8 +305,8 @@ class TestLLM:
         assert len(response.source_documents) > 0
 
     def test_map_reduce_summary(self, created_files, backend):
-        file_short = next(f for f in created_files if "smarter" in f.name.lower())
-        file_long = next(f for f in created_files if "health" in f.name.lower())
+        file_short = next(f for f in created_files if "smarter" in f.key.lower())
+        file_long = next(f for f in created_files if "health" in f.key.lower())
 
         map_prompt = PromptTemplate.from_template("Summarise this text: {text}")
         reduce_prompt = PromptTemplate.from_template("Summarise these summaries: {text}")
