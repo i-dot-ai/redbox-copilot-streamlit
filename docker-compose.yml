@@ -31,6 +31,28 @@ services:
       - minio
     networks:
       - redbox-app-network
+  worker:
+    image: redbox-worker:latest
+    profiles:
+      - backend-core
+    build:
+      context: https://github.com/i-dot-ai/redbox-copilot.git
+      dockerfile: ./worker/Dockerfile
+      args:
+        - EMBEDDING_MODEL=${EMBEDDING_MODEL}
+    environment:
+      - ELASTIC__HOST=${ELASTIC__HOST}
+      - ELASTIC__PORT=${ELASTIC__PORT}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL}
+    depends_on:
+      - redis
+      - elasticsearch
+      - minio
+    networks:
+      - redbox-app-network
+    restart: unless-stopped
   core-api:
     image: redbox-core-api:latest
     profiles:
@@ -39,19 +61,23 @@ services:
       context: https://github.com/i-dot-ai/redbox-copilot.git
       dockerfile: ./core_api/Dockerfile
       args:
-        - EMBEDDING_MODEL=${EMBEDDING_MODEL:-}
+        - EMBEDDING_MODEL=${EMBEDDING_MODEL}
     ports:
       - 5002:5002
     environment:
       - PORT=5002
-    env_file:
-      - .env
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL}
     networks:
       - redbox-app-network
     depends_on:
       - elasticsearch
       - minio
       - redis
+      - worker
     restart: unless-stopped
   minio:
     image: minio/minio

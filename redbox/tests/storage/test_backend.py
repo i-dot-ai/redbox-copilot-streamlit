@@ -2,6 +2,7 @@ import time
 from io import BytesIO
 from pathlib import Path
 from uuid import UUID, uuid4
+from requests.exceptions import Timeout, HTTPError
 
 import pytest
 from elasticsearch import NotFoundError
@@ -24,13 +25,15 @@ from redbox.models import (
 )
 from redbox.tests.conftest import TEST_DATA, YieldFixture
 
+TEST_USER_UUID = UUID("00000000-0000-0000-0000-000000000000")
+
 
 @pytest.fixture(scope="session")
 def backend(settings) -> YieldFixture[APIBackend]:
     backend = APIBackend(settings=settings)
 
     _ = backend.set_user(
-        uuid=UUID("bd65600d-8669-4903-8a14-af88203add38"),
+        uuid=TEST_USER_UUID,
         name="Foo Bar",
         email="foo.bar@gov.uk",
         department="Cabinet Office",
@@ -63,7 +66,7 @@ def created_files(backend) -> YieldFixture[list[File]]:
             to_upload = UploadFile(
                 content_type=ContentType(file_type),
                 filename=sanitised_name,
-                creator_user_uuid=UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                creator_user_uuid=TEST_USER_UUID,
                 file=BytesIO(f.read()),
             )
 
@@ -71,28 +74,30 @@ def created_files(backend) -> YieldFixture[list[File]]:
 
         assert isinstance(file, File)
 
+        try:
+            _ = backend.get_object(file_uuid=file.uuid)
+        except ValueError as e:
+            pytest.fail("Object not uploaded correctly")
+
         uploaded_files.append(file)
 
-    # TODO: Fix file statuses
-    time.sleep(90)
-    # uploaded_file_statuses: list[str] = [
-    #     backend.get_file_status(file_uuid=file.uuid).processing_status
-    #     for file in uploaded_files
-    # ]
+    uploaded_file_statuses: list[str] = [
+        backend.get_file_status(file_uuid=file.uuid).processing_status
+        for file in uploaded_files
+    ]
 
-    # timeout = 90
-    # timetaken = 0
-    # while "chunking" in uploaded_file_statuses:
-    #     if timetaken >= timeout:
-    #         raise Timeout("Took too long to chunk")
+    timeout = 300
+    start_time = time.time()
+    while not all([i == 'complete' for i in uploaded_file_statuses]):
+        if time.time() - start_time > timeout:
+            raise Timeout("Took too long to chunk")
 
-    #     timetaken += 5
-    #     time.sleep(5)
+        time.sleep(5)
 
-    #     uploaded_file_statuses: list[str] = [
-    #         backend.get_file_status(file_uuid=file.uuid).processing_status
-    #         for file in uploaded_files
-    #     ]
+        uploaded_file_statuses: list[str] = [
+            backend.get_file_status(file_uuid=file.uuid).processing_status
+            for file in uploaded_files
+        ]
 
     yield uploaded_files
 
@@ -104,11 +109,10 @@ def created_files(backend) -> YieldFixture[list[File]]:
     for file in uploaded_files:
         assert file not in backend.list_files()
 
-        chunks = backend.get_file_chunks(file_uuid=file.uuid)
+        with pytest.raises(HTTPError):
+            _ = backend.get_file_chunks(file_uuid=file.uuid)
 
-        assert len(chunks) == 0
-
-        with pytest.raises(NotFoundError):
+        with pytest.raises(ValueError):
             _ = backend.get_object(file_uuid=file.uuid)
 
 
@@ -176,7 +180,7 @@ class TestFiles:
         # TODO: Returns "embedding", needs fixing
         # assert status.processing_status.value == "complete"
         assert status is not None
-
+    
     def test_get_file(self, created_files, backend):
         for file in created_files:
             returned = backend.get_file(file_uuid=file.uuid)
@@ -197,7 +201,7 @@ class TestFiles:
     def test_get_file_chunks(self, created_files, backend):
         for file in created_files:
             chunks = backend.get_file_chunks(file_uuid=file.uuid)
-            assert len(chunks) > 0
+            assert len(chunks) > 1
 
     def test_get_file_as_documents(self, created_files, backend):
         for file in created_files:
@@ -268,7 +272,7 @@ class TestFeedback:
             feedback_type="thumbs",
             feedback_score="👍",
             feedback_text="Baz",
-            creator_user_uuid=UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            creator_user_uuid=TEST_USER_UUID,
         )
 
         given = backend.create_feedback(feedback=feedback)

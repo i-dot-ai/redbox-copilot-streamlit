@@ -1,9 +1,11 @@
-import ast
+import botocore
 import logging
 from functools import reduce
 from pathlib import Path
 from typing import Any, Callable, Optional
 from uuid import UUID
+import json
+from http import HTTPStatus
 
 import requests
 from langchain.prompts.prompt import PromptTemplate
@@ -11,7 +13,9 @@ from langchain.schema import Document
 from langchain_community.chat_models import ChatLiteLLM
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_elasticsearch import ElasticsearchStore
+from torch import Value
 from yarl import URL
+from urllib import parse
 
 from redbox.definitions import Backend
 from redbox.llm.llm_base import LLMHandler
@@ -118,11 +122,16 @@ class APIBackend(Backend):
 
         file_type = Path(file.filename).suffix.lower()
 
+        tags = {
+            "file_type": file_type,
+            "user_uuid": file.creator_user_uuid
+        }
+
         self._s3.upload_fileobj(
             Bucket=self._settings.bucket_name,
             Fileobj=file.file,
             Key=file.filename,
-            ExtraArgs={"Tagging": f"file_type={file_type}&user_uuid={file.creator_user_uuid}"},
+            ExtraArgs={"Tagging": parse.urlencode(tags)},
         )
 
         # Chunk, save and index
@@ -138,13 +147,9 @@ class APIBackend(Backend):
             headers={"Authorization": bearer_token},
             timeout=10,
         )
+        response.raise_for_status()
 
-        if response.status_code != 200:
-            logging.warning(f"{file.uuid} generated response {response.status_code}")
-
-        response_dict = ast.literal_eval(response.content.decode("utf-8"))
-
-        return File(**response_dict)
+        return File(**response.json())
 
     def get_file(self, file_uuid: UUID) -> File:
         """Gets a file object by UUID."""
@@ -153,13 +158,9 @@ class APIBackend(Backend):
         response = requests.get(
             str(self._client / f"file/{file_uuid}"), headers={"Authorization": bearer_token}, timeout=10
         )
+        response.raise_for_status()
 
-        if response.status_code != 200:
-            logging.warning(f"{file_uuid} generated response {response.status_code}")
-
-        response_dict = ast.literal_eval(response.content.decode("utf-8"))
-
-        return File(**response_dict)
+        return File(**response.json())
 
     def get_files(self, file_uuids: list[UUID]) -> list[File]:
         """Gets many file objects by UUID."""
@@ -167,14 +168,30 @@ class APIBackend(Backend):
 
     def get_object(self, file_uuid: UUID) -> bytes:
         """Gets a raw file blob by UUID."""
-        file = self.get_file(file_uuid=file_uuid)
-        file_object = self._s3.get_object(Bucket=self._settings.bucket_name, Key=file.key)
+        try:
+            file = self.get_file(file_uuid=file_uuid)
+        except requests.HTTPError as e:
+            raise ValueError(f"{file_uuid} not found") from e
+
+        try:
+            file_object = self._s3.get_object(Bucket=self._settings.bucket_name, Key=file.key)
+        except botocore.exceptions.ClientError as e:
+            raise ValueError(f"{file_uuid} not found") from e
+            
         return file_object["Body"].read()
 
     def list_files(self) -> list[File]:
         """Lists all file objects in the system."""
-        files: list[File] = self._storage_handler.read_all_items(model_type="File")
-        return files
+        bearer_token = self.get_user().get_bearer_token(key=self._settings.streamlit_secret_key)
+
+        response = requests.get(
+            str(self._client / f"file"), headers={"Authorization": bearer_token}, timeout=10
+        )
+        response.raise_for_status()
+
+        file_list = json.loads(response.content.decode("utf-8"))
+
+        return [File(**file) for file in file_list]
 
     def delete_file(self, file_uuid: UUID) -> File:
         """Deletes a file object by UUID."""
@@ -186,18 +203,14 @@ class APIBackend(Backend):
         response = requests.delete(
             str(self._client / f"file/{file_uuid}"), headers={"Authorization": bearer_token}, timeout=10
         )
-
-        if response.status_code != 200:
-            logging.warning(f"{file_uuid} generated response {response.status_code}")
-
-        response_dict = ast.literal_eval(response.content.decode("utf-8"))
+        response.raise_for_status()
 
         for tag in self.list_tags():
             _ = self.remove_files_from_tag(file_uuids=[file.uuid], tag_uuid=tag.uuid)
             if len(tag.files) == 0:
                 _ = self.delete_tag(tag_uuid=tag.uuid)
-
-        return File(**response_dict)
+        
+        return File(**response.json())
 
     def get_file_chunks(self, file_uuid: UUID) -> list[Chunk]:
         """Gets a file's chunks by UUID."""
@@ -206,13 +219,11 @@ class APIBackend(Backend):
         response = requests.get(
             str(self._client / f"file/{file_uuid}/chunks"), headers={"Authorization": bearer_token}, timeout=10
         )
+        response.raise_for_status()
 
-        if response.status_code != 200:
-            logging.warning(f"{file_uuid} generated response {response.status_code}")
+        chunk_list = json.loads(response.content.decode("utf-8"))
 
-        response_list: list[dict[str, Any]] = ast.literal_eval(response.content.decode("utf-8"))
-
-        return [Chunk(**response_dict) for response_dict in response_list]
+        return [Chunk(**chunk) for chunk in chunk_list]
 
     def get_file_as_documents(self, file_uuid: UUID, max_tokens: int) -> list[Document]:
         """Gets a file as LangChain Documents, splitting it by max_tokens."""
@@ -254,13 +265,9 @@ class APIBackend(Backend):
         response = requests.get(
             str(self._client / f"file/{file_uuid}/status"), headers={"Authorization": bearer_token}, timeout=10
         )
-
-        if response.status_code != 200:
-            logging.warning(f"{file_uuid} generated response {response.status_code}")
-
-        response_dict = ast.literal_eval(response.content.decode("utf-8"))
-
-        return FileStatus(**response_dict)
+        response.raise_for_status()
+        
+        return FileStatus(**json.loads(response.content.decode("utf-8")))
 
     def get_supported_file_types(self) -> list[str]:
         """Shows the filetypes the system can process."""
@@ -382,7 +389,7 @@ class APIBackend(Backend):
             hybrid = True
 
         vector_store = ElasticsearchStore(
-            index_name="redbox-vector",
+            index_name="redbox-data-chunk",
             es_connection=self._es,
             strategy=ElasticsearchStore.ApproxRetrievalStrategy(hybrid=hybrid),
             embedding=self._embedding_model,

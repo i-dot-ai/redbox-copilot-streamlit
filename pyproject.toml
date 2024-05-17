@@ -58,7 +58,6 @@ filterwarnings = [
 [tool.pytest_env]
 ELASTIC__HOST = "localhost"
 MINIO_HOST = "localhost"
-OBJECT_STORE = "moto"
 EMBEDDING_MODEL = "paraphrase-albert-small-v2"
 REDIS_HOST = "localhost"
 CONTACT_EMAIL = "test@example.com"
