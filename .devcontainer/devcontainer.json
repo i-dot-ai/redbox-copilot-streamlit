@@ -33,7 +33,8 @@
         "ms-python.vscode-pylance",
         "ms-azuretools.vscode-docker",
         "github.vscode-github-actions",
-        "ms-vscode.makefile-tools"
+        "ms-vscode.makefile-tools",
+        "ms-toolsai.jupyter"
       ],
       "settings": {
         "workbench.editor.wrapTabs": true,
