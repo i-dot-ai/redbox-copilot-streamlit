@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional, Literal
+from typing import TYPE_CHECKING, Literal, Optional
 
 import boto3
 from botocore.exceptions import ClientError

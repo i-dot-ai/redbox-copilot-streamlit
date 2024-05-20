@@ -2,12 +2,11 @@ import time
 from io import BytesIO
 from pathlib import Path
 from uuid import UUID, uuid4
-from requests.exceptions import Timeout, HTTPError
 
 import pytest
-from elasticsearch import NotFoundError
 from langchain.prompts import PromptTemplate
 from langchain.schema import Document
+from requests.exceptions import HTTPError, Timeout
 
 from redbox.api import APIBackend
 from redbox.models import (
@@ -76,27 +75,25 @@ def created_files(backend) -> YieldFixture[list[File]]:
 
         try:
             _ = backend.get_object(file_uuid=file.uuid)
-        except ValueError as e:
+        except ValueError:
             pytest.fail("Object not uploaded correctly")
 
         uploaded_files.append(file)
 
     uploaded_file_statuses: list[str] = [
-        backend.get_file_status(file_uuid=file.uuid).processing_status
-        for file in uploaded_files
+        backend.get_file_status(file_uuid=file.uuid).processing_status for file in uploaded_files
     ]
 
     timeout = 300
     start_time = time.time()
-    while not all([i == 'complete' for i in uploaded_file_statuses]):
+    while not all([i == "complete" for i in uploaded_file_statuses]):
         if time.time() - start_time > timeout:
             raise Timeout("Took too long to chunk")
 
         time.sleep(5)
 
         uploaded_file_statuses: list[str] = [
-            backend.get_file_status(file_uuid=file.uuid).processing_status
-            for file in uploaded_files
+            backend.get_file_status(file_uuid=file.uuid).processing_status for file in uploaded_files
         ]
 
     yield uploaded_files
@@ -180,7 +177,7 @@ class TestFiles:
         # TODO: Returns "embedding", needs fixing
         # assert status.processing_status.value == "complete"
         assert status is not None
-    
+
     def test_get_file(self, created_files, backend):
         for file in created_files:
             returned = backend.get_file(file_uuid=file.uuid)
