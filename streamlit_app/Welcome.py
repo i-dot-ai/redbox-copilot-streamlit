@@ -18,7 +18,3 @@ st.markdown(
     "people, actions and discussion for your principal \n"
     "* [Ask the Box](/Ask_the_Box) will answer questions about your box's content \n"
 )
-
-files = st.session_state.backend.list_files()
-chunks = st.session_state.backend.get_file_chunks(files[0].uuid)
-st.write(chunks)

@@ -58,7 +58,7 @@ filterwarnings = [
 [tool.pytest_env]
 ELASTIC__HOST = "localhost"
 MINIO_HOST = "localhost"
-EMBEDDING_MODEL = "paraphrase-albert-small-v2"
+EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 REDIS_HOST = "localhost"
 CONTACT_EMAIL = "test@example.com"
 CORE_API_HOST = "http://localhost"

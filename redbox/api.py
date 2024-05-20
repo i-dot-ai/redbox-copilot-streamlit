@@ -1,21 +1,19 @@
-import botocore
+import json
 import logging
 from functools import reduce
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
+from urllib import parse
 from uuid import UUID
-import json
-from http import HTTPStatus
 
+import botocore
 import requests
 from langchain.prompts.prompt import PromptTemplate
 from langchain.schema import Document
 from langchain_community.chat_models import ChatLiteLLM
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_elasticsearch import ElasticsearchStore
-from torch import Value
 from yarl import URL
-from urllib import parse
 
 from redbox.definitions import Backend
 from redbox.llm.llm_base import LLMHandler
@@ -122,10 +120,7 @@ class APIBackend(Backend):
 
         file_type = Path(file.filename).suffix.lower()
 
-        tags = {
-            "file_type": file_type,
-            "user_uuid": file.creator_user_uuid
-        }
+        tags = {"file_type": file_type, "user_uuid": file.creator_user_uuid}
 
         self._s3.upload_fileobj(
             Bucket=self._settings.bucket_name,
@@ -177,16 +172,14 @@ class APIBackend(Backend):
             file_object = self._s3.get_object(Bucket=self._settings.bucket_name, Key=file.key)
         except botocore.exceptions.ClientError as e:
             raise ValueError(f"{file_uuid} not found") from e
-            
+
         return file_object["Body"].read()
 
     def list_files(self) -> list[File]:
         """Lists all file objects in the system."""
         bearer_token = self.get_user().get_bearer_token(key=self._settings.streamlit_secret_key)
 
-        response = requests.get(
-            str(self._client / f"file"), headers={"Authorization": bearer_token}, timeout=10
-        )
+        response = requests.get(str(self._client / "file"), headers={"Authorization": bearer_token}, timeout=10)
         response.raise_for_status()
 
         file_list = json.loads(response.content.decode("utf-8"))
@@ -209,7 +202,7 @@ class APIBackend(Backend):
             _ = self.remove_files_from_tag(file_uuids=[file.uuid], tag_uuid=tag.uuid)
             if len(tag.files) == 0:
                 _ = self.delete_tag(tag_uuid=tag.uuid)
-        
+
         return File(**response.json())
 
     def get_file_chunks(self, file_uuid: UUID) -> list[Chunk]:
@@ -266,7 +259,7 @@ class APIBackend(Backend):
             str(self._client / f"file/{file_uuid}/status"), headers={"Authorization": bearer_token}, timeout=10
         )
         response.raise_for_status()
-        
+
         return FileStatus(**json.loads(response.content.decode("utf-8")))
 
     def get_supported_file_types(self) -> list[str]:
@@ -389,10 +382,11 @@ class APIBackend(Backend):
             hybrid = True
 
         vector_store = ElasticsearchStore(
-            index_name="redbox-data-chunk",
             es_connection=self._es,
-            strategy=ElasticsearchStore.ApproxRetrievalStrategy(hybrid=hybrid),
+            index_name="redbox-data-chunk",
             embedding=self._embedding_model,
+            strategy=ElasticsearchStore.ApproxRetrievalStrategy(hybrid=hybrid),
+            vector_query_field="embedding",
         )
 
         self._llm = LLMHandler(
