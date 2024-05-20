@@ -144,6 +144,10 @@ html2markdown = "^0.1.7"
 unstructured = {extras = ["all-docs"], version = "^0.13.2"}
 
 
+[tool.poetry.group.eval.dependencies]
+jupyter = "^1.0.0"
+datasets = "^2.19.1"
+
 [[tool.poetry.source]]
 name = "pytorch-cpu-src"
 url = "https://download.pytorch.org/whl/cpu"
