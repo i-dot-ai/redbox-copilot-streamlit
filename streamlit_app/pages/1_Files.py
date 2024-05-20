@@ -39,7 +39,7 @@ def preview_modal(file):
 
 # region Upload form ====================
 
-with st.form("Upload"):
+with st.form("Upload", clear_on_submit=True):
     uploaded_files = st.file_uploader(
         "Upload your documents",
         accept_multiple_files=True,

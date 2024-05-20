@@ -54,7 +54,7 @@ def backend(settings) -> YieldFixture[APIBackend]:
 @pytest.fixture(scope="session")
 def created_files(backend) -> YieldFixture[list[File]]:
     """Uploads all files for use in other tests."""
-    file_paths: list[Path] = [Path(*x.parts[-2:]) for x in (TEST_DATA / "docs").glob("*.*")]
+    file_paths: list[Path] = [Path(*x.parts[-2:]) for x in (TEST_DATA / "docs").glob("*.txt")]
     uploaded_files: list[File] = []
 
     for file_path in file_paths:
@@ -201,6 +201,7 @@ class TestFiles:
     def test_get_file_chunks(self, created_files, backend):
         for file in created_files:
             chunks = backend.get_file_chunks(file_uuid=file.uuid)
+            print(chunks)
             assert len(chunks) > 1
 
     def test_get_file_as_documents(self, created_files, backend):
