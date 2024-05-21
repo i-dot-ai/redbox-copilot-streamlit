@@ -2,7 +2,7 @@ import json
 import logging
 from functools import reduce
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Literal, Optional
 from urllib import parse
 from uuid import UUID
 
@@ -78,6 +78,20 @@ class APIBackend(Backend):
             "embedding_model": self._embedding_model is not None,
             "s3": self._s3 is not None,
         }
+
+    def health(self) -> Literal["ready"]:
+        """Returns the health of the API."""
+        bearer_token = self.get_user().get_bearer_token(key=self._settings.streamlit_secret_key)
+
+        response = requests.get(str(self._client / "health"), headers={"Authorization": bearer_token}, timeout=10)
+        response.raise_for_status()
+
+        status = response.json()["status"]
+
+        if status != "ready":
+            raise ValueError("Service not ready")
+
+        return status
 
     def set_user(
         self,

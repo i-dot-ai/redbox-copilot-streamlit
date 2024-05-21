@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Callable, Optional, Sequence
+from typing import Callable, Literal, Optional, Sequence
 from uuid import UUID
 
 from langchain.prompts.prompt import PromptTemplate
@@ -26,6 +26,11 @@ class Backend(ABC):
     @abstractmethod
     def status(self) -> dict[str, bool]:
         """Reports the current state of set variables."""
+        ...
+
+    @abstractmethod
+    def health(self) -> Literal["ready"]:
+        """Returns the health of the API."""
         ...
 
     @abstractmethod

@@ -47,6 +47,8 @@ def backend(settings) -> YieldFixture[APIBackend]:
         temperature=0.2,
     )
 
+    assert backend.health() == "ready"
+
     yield backend
 
 
