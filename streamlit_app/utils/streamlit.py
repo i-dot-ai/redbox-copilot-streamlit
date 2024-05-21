@@ -16,7 +16,10 @@ from loguru import logger
 from lxml.html.clean import Cleaner
 
 from redbox.api import APIBackend
+from redbox.local import LocalBackend
 from redbox.models import ChatMessage, Feedback, File, Settings
+
+BACKEND = {"LOCAL": LocalBackend, "API": APIBackend}
 
 
 def init_session_state() -> dict:
@@ -112,7 +115,9 @@ def init_session_state() -> dict:
         _model_params = {"max_tokens": 10_000, "max_return_tokens": 1_000, "temperature": 0.2}
 
     if "backend" not in st.session_state:
-        st.session_state.backend = APIBackend(settings=Settings())
+        settings = Settings()
+        BackendClass = BACKEND[settings.streamlit_backend]
+        st.session_state.backend = BackendClass(settings=settings)
 
         st.session_state.backend.set_user(
             uuid=UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
