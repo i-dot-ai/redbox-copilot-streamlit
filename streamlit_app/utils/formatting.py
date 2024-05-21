@@ -69,18 +69,16 @@ def get_file_link(file: File, page: Optional[int] = None) -> str:
     return link_html
 
 
-def get_document_citation_assets(document: SourceDocument) -> tuple[File, Optional[list[int]], str]:
+def get_document_citation_assets(document: SourceDocument) -> tuple[File, Optional[int | list[int]], str]:
     """Takes a SourceDocument and returns a tuple of its File, page numbers and URL."""
     file = st.session_state.backend.get_file(file_uuid=document.file_uuid)
 
-    if not isinstance(file, File):
-        raise ValueError("get_document_citation_assets did not find a File object")
-
-    if document.page_numbers is None:
-        url = get_file_link(file=file)
+    if isinstance(document.page_numbers, int):
+        url = get_file_link(file=file, page=document.page_numbers)
+    elif isinstance(document.page_numbers, list):
+        url = get_file_link(file=file, page=document.page_numbers[0])
     else:
-        for page in document.page_numbers:
-            url = get_file_link(file=file, page=page)
+        url = get_file_link(file=file)
 
     return file, document.page_numbers, url
 

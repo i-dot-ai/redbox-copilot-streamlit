@@ -93,6 +93,7 @@ yarl = "^1.9.4"
 
 aiohttp = "^3.9.5"
 pyjwt = "^2.8.0"
+requests = "^2.32.0"
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.1.1"
 pytest-mock = "^3.14.0"

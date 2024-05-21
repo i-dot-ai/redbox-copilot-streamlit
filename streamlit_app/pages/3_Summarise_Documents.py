@@ -1,4 +1,3 @@
-import logging
 from datetime import datetime
 from io import BytesIO
 from typing import Optional
@@ -63,9 +62,7 @@ def update_token_budget_tracker():
     current_token_count = 0
 
     for selected_file_uuid in st.session_state.selected_files:
-        selected_file = FILES[selected_file_uuid]
-        logging.info(selected_file)
-        current_token_count += selected_file.token_count
+        current_token_count += st.session_state.backend.get_file_token_count(file_uuid=selected_file_uuid)
 
     if current_token_count > MAX_TOKENS:
         if not st.session_state.summary_of_summaries_mode:
@@ -216,7 +213,7 @@ summary_file_select = st.multiselect(
     options=FILES.keys(),
     default=TAGS[tag_select].files if tag_select is not None else [],
     on_change=clear_params,
-    format_func=lambda file: FILES[file].name,
+    format_func=lambda file: FILES[file].key,
     key="selected_files",
 )
 

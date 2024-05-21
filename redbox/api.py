@@ -251,6 +251,11 @@ class APIBackend(Backend):
 
         return documents
 
+    def get_file_token_count(self, file_uuid: UUID) -> int:
+        """Gets a file's token count."""
+        chunks = self.get_file_chunks(file_uuid=file_uuid)
+        return sum(chunk.token_count for chunk in chunks)
+
     def get_file_status(self, file_uuid: UUID) -> FileStatus:
         """Gets the processing status of a file."""
         bearer_token = self.get_user().get_bearer_token(key=self._settings.streamlit_secret_key)

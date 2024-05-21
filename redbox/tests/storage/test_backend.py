@@ -207,6 +207,12 @@ class TestFiles:
             assert len(documents) > 1
             assert all(isinstance(document, Document) for document in documents)
 
+    def test_get_file_token_count(self, created_files, backend):
+        for file in created_files:
+            token_count = backend.get_file_token_count(file_uuid=file.uuid)
+            assert isinstance(token_count, int)
+            assert token_count > 0
+
 
 # region TAGS ====================
 

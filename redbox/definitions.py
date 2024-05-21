@@ -89,6 +89,11 @@ class Backend(ABC):
         ...
 
     @abstractmethod
+    def get_file_token_count(self, file_uuid: UUID) -> int:
+        """Gets a file's token count."""
+        ...
+
+    @abstractmethod
     def get_file_status(self, file_uuid: UUID) -> FileStatus:
         """Gets the processing status of a file."""
         ...
