@@ -16,7 +16,6 @@ from streamlit_app.utils.streamlit import (
 )
 
 __all__ = [
-    "get_logger",
     "init_session_state",
     "StreamlitStreamHandler",
     "FilePreview",

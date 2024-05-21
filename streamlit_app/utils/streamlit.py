@@ -1,7 +1,6 @@
 import base64
 import os
 from datetime import datetime
-from functools import lru_cache
 from io import BytesIO
 from typing import Callable, Optional
 from uuid import UUID
@@ -20,7 +19,6 @@ from redbox.api import APIBackend
 from redbox.models import ChatMessage, Feedback, File, Settings
 
 
-@lru_cache(maxsize=None)
 def init_session_state() -> dict:
     """
     Initialise the session state and return the environment variables
@@ -184,15 +182,14 @@ class FilePreview(object):
             ".docx": self._render_docx,
         }
 
-    def st_render(self, file: File) -> None:
+    def st_render(self, file: File, content_type: str) -> None:
         """Outputs the given file to streamlit UI
 
         Args:
             file (File): The file to preview
         """
-
         # Known mypy bug: https://github.com/python/mypy/issues/10740
-        render_method: Callable[..., None] = self.render_methods[file.content_type]  # type: ignore[assignment]
+        render_method: Callable[..., None] = self.render_methods[content_type]  # type: ignore[assignment]
         file_bytes = self.backend.get_object(file_uuid=file.uuid)
         render_method(file, file_bytes)
 
@@ -202,14 +199,14 @@ class FilePreview(object):
 
         if page_number is not None:
             iframe = f"""<iframe
-                        title="{file.name}" \
+                        title="{file.key}" \
                         src="data:application/pdf;base64,{base64_pdf}#page={page_number}" \
                         width="100%" \
                         height="1000" \
                         type="application/pdf"></iframe>"""
         else:
             iframe = f"""<iframe
-                        title="{file.name}" \
+                        title="{file.key}" \
                         src="data:application/pdf;base64,{base64_pdf}" \
                         width="100%" \
                         height="1000" \
@@ -238,10 +235,10 @@ class FilePreview(object):
     def _render_docx(self, file: File, file_bytes: bytes) -> None:
         st.warning("DOCX preview not yet supported.")
         st.download_button(
-            label=file.name,
+            label=file.key,
             data=file_bytes,
             mime="application/msword",
-            file_name=file.name,
+            file_name=file.key,
         )
 
 

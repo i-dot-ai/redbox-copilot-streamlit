@@ -1,9 +1,13 @@
+import json
 import logging
 from functools import reduce
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Literal, Optional
+from urllib import parse
 from uuid import UUID
 
+import botocore
+import requests
 from langchain.prompts.prompt import PromptTemplate
 from langchain.schema import Document
 from langchain_community.chat_models import ChatLiteLLM
@@ -17,7 +21,6 @@ from redbox.models import (
     ChatRequest,
     ChatResponse,
     Chunk,
-    ContentType,
     Feedback,
     File,
     FileStatus,
@@ -38,6 +41,9 @@ class APIBackend(Backend):
     def __init__(self, settings: Settings):
         # Settings
         self._settings: Settings = settings
+
+        # API
+        self._client = URL(self._settings.core_api_host).with_port(self._settings.core_api_port)
 
         # Storage
         self._es = self._settings.elasticsearch_client()
@@ -72,6 +78,20 @@ class APIBackend(Backend):
             "embedding_model": self._embedding_model is not None,
             "s3": self._s3 is not None,
         }
+
+    def health(self) -> Literal["ready"]:
+        """Returns the health of the API."""
+        bearer_token = self.get_user().get_bearer_token(key=self._settings.streamlit_secret_key)
+
+        response = requests.get(str(self._client / "health"), headers={"Authorization": bearer_token}, timeout=10)
+        response.raise_for_status()
+
+        status = response.json()["status"]
+
+        if status != "ready":
+            raise ValueError("Service not ready")
+
+        return status
 
     def set_user(
         self,
@@ -112,95 +132,105 @@ class APIBackend(Backend):
         # Upload
         logging.info(f"Uploading {file.uuid}")
 
-        file_type = Path(file.filename).suffix
+        file_type = Path(file.filename).suffix.lower()
 
-        self._s3.put_object(
+        tags = {"file_type": file_type, "user_uuid": file.creator_user_uuid}
+
+        self._s3.upload_fileobj(
             Bucket=self._settings.bucket_name,
-            Body=file.file,
+            Fileobj=file.file,
             Key=file.filename,
-            Tagging=f"file_type={file_type}&user_uuid={file.creator_user_uuid}",
+            ExtraArgs={"Tagging": parse.urlencode(tags)},
         )
 
-        simple_s3_url = URL(
-            self._s3.generate_presigned_url(
-                "get_object",
-                Params={"Bucket": self._settings.bucket_name, "Key": file.filename},
-                ExpiresIn=3600,
-            )
-        ).with_query("")
+        # Chunk, save and index
 
-        logging.info(f"Uploaded file to {simple_s3_url}")
+        bearer_token = self.get_user().get_bearer_token(key=self._settings.streamlit_secret_key)
 
-        file_uploaded = File(
-            url=str(simple_s3_url),  # type: ignore[arg-type]
-            content_type=ContentType(file_type),
-            name=file.filename,
-            creator_user_uuid=file.creator_user_uuid,
+        response = requests.post(
+            str(self._client / "file"),
+            json={
+                "key": file.filename,
+                "bucket": self._settings.bucket_name,
+            },
+            headers={"Authorization": bearer_token},
+            timeout=10,
         )
+        response.raise_for_status()
 
-        # Chunk
-        logging.info(f"Chunking {file.uuid}")
-
-        chunks = self._file_publisher.chunk_file(file_uploaded)
-
-        # Save
-        logging.info(f"Saving {file.uuid}")
-
-        self._storage_handler.write_item(file_uploaded)
-        self._storage_handler.write_items(chunks)
-
-        # Index
-        logging.info(f"Indexing {file.uuid}")
-
-        self._llm.add_chunks_to_vector_store(chunks=chunks)
-
-        logging.info(f"{file.uuid} complete!")
-
-        return file_uploaded
+        return File(**response.json())
 
     def get_file(self, file_uuid: UUID) -> File:
         """Gets a file object by UUID."""
-        file = self._storage_handler.read_item(file_uuid, model_type="File")
-        if not isinstance(file, File):
-            raise ValueError("get_file did not return a File object")
-        return file
+        bearer_token = self.get_user().get_bearer_token(key=self._settings.streamlit_secret_key)
+
+        response = requests.get(
+            str(self._client / f"file/{file_uuid}"), headers={"Authorization": bearer_token}, timeout=10
+        )
+        response.raise_for_status()
+
+        return File(**response.json())
 
     def get_files(self, file_uuids: list[UUID]) -> list[File]:
         """Gets many file objects by UUID."""
-        return self._storage_handler.read_items(file_uuids, model_type="File")
+        return [self.get_file(file_uuid=file_uuid) for file_uuid in file_uuids]
 
     def get_object(self, file_uuid: UUID) -> bytes:
         """Gets a raw file blob by UUID."""
-        file = self.get_file(file_uuid=file_uuid)
-        file_object = self._s3.get_object(Bucket=self._settings.bucket_name, Key=file.name)
+        try:
+            file = self.get_file(file_uuid=file_uuid)
+        except requests.HTTPError as e:
+            raise ValueError(f"{file_uuid} not found") from e
+
+        try:
+            file_object = self._s3.get_object(Bucket=self._settings.bucket_name, Key=file.key)
+        except botocore.exceptions.ClientError as e:
+            raise ValueError(f"{file_uuid} not found") from e
+
         return file_object["Body"].read()
 
     def list_files(self) -> list[File]:
         """Lists all file objects in the system."""
-        files: list[File] = self._storage_handler.read_all_items(model_type="File")
-        return files
+        bearer_token = self.get_user().get_bearer_token(key=self._settings.streamlit_secret_key)
+
+        response = requests.get(str(self._client / "file"), headers={"Authorization": bearer_token}, timeout=10)
+        response.raise_for_status()
+
+        file_list = json.loads(response.content.decode("utf-8"))
+
+        return [File(**file) for file in file_list]
 
     def delete_file(self, file_uuid: UUID) -> File:
         """Deletes a file object by UUID."""
         file = self.get_file(file_uuid=file_uuid)
-        chunks = self._storage_handler.get_file_chunks(file.uuid)
+        self._s3.delete_object(Bucket=self._settings.bucket_name, Key=file.key)
 
-        self._s3.delete_object(Bucket=self._settings.bucket_name, Key=file.name)
-        self._storage_handler.delete_item(file)
-        self._storage_handler.delete_items(chunks)
+        bearer_token = self.get_user().get_bearer_token(key=self._settings.streamlit_secret_key)
+
+        response = requests.delete(
+            str(self._client / f"file/{file_uuid}"), headers={"Authorization": bearer_token}, timeout=10
+        )
+        response.raise_for_status()
 
         for tag in self.list_tags():
             _ = self.remove_files_from_tag(file_uuids=[file.uuid], tag_uuid=tag.uuid)
             if len(tag.files) == 0:
                 _ = self.delete_tag(tag_uuid=tag.uuid)
 
-        return file
+        return File(**response.json())
 
     def get_file_chunks(self, file_uuid: UUID) -> list[Chunk]:
         """Gets a file's chunks by UUID."""
-        logging.info(f"getting chunks for file {file_uuid}")
-        chunks = self._storage_handler.get_file_chunks(file_uuid)
-        return chunks
+        bearer_token = self.get_user().get_bearer_token(key=self._settings.streamlit_secret_key)
+
+        response = requests.get(
+            str(self._client / f"file/{file_uuid}/chunks"), headers={"Authorization": bearer_token}, timeout=10
+        )
+        response.raise_for_status()
+
+        chunk_list = json.loads(response.content.decode("utf-8"))
+
+        return [Chunk(**chunk) for chunk in chunk_list]
 
     def get_file_as_documents(self, file_uuid: UUID, max_tokens: int) -> list[Document]:
         """Gets a file as LangChain Documents, splitting it by max_tokens."""
@@ -209,7 +239,7 @@ class APIBackend(Backend):
 
         token_count: int = 0
         page_content: list[str] = []
-        metadata: list[Metadata] = []
+        metadata: list[Metadata | None] = []
 
         for chunk in chunks:
             if token_count + chunk.token_count >= max_tokens:
@@ -235,10 +265,21 @@ class APIBackend(Backend):
 
         return documents
 
+    def get_file_token_count(self, file_uuid: UUID) -> int:
+        """Gets a file's token count."""
+        chunks = self.get_file_chunks(file_uuid=file_uuid)
+        return sum(chunk.token_count for chunk in chunks)
+
     def get_file_status(self, file_uuid: UUID) -> FileStatus:
         """Gets the processing status of a file."""
-        status = self._storage_handler.get_file_status(file_uuid)
-        return status
+        bearer_token = self.get_user().get_bearer_token(key=self._settings.streamlit_secret_key)
+
+        response = requests.get(
+            str(self._client / f"file/{file_uuid}/status"), headers={"Authorization": bearer_token}, timeout=10
+        )
+        response.raise_for_status()
+
+        return FileStatus(**json.loads(response.content.decode("utf-8")))
 
     def get_supported_file_types(self) -> list[str]:
         """Shows the filetypes the system can process."""
@@ -360,10 +401,11 @@ class APIBackend(Backend):
             hybrid = True
 
         vector_store = ElasticsearchStore(
-            index_name="redbox-vector",
             es_connection=self._es,
-            strategy=ElasticsearchStore.ApproxRetrievalStrategy(hybrid=hybrid),
+            index_name="redbox-data-chunk",
             embedding=self._embedding_model,
+            strategy=ElasticsearchStore.ApproxRetrievalStrategy(hybrid=hybrid),
+            vector_query_field="embedding",
         )
 
         self._llm = LLMHandler(

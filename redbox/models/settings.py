@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Literal, Optional
 
 import boto3
 from botocore.exceptions import ClientError
@@ -33,10 +33,12 @@ class ElasticCloudSettings(BaseModel):
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_nested_delimiter="__")
+    model_config = SettingsConfigDict(env_file=".env", env_nested_delimiter="__", extra="allow")
 
     anthropic_api_key: Optional[str] = None
     openai_api_key: Optional[str] = None
+
+    partition_strategy: Literal["auto", "fast", "ocr_only", "hi_res"] = "fast"
 
     elastic: ElasticCloudSettings | ElasticLocalSettings = ElasticLocalSettings()
 
@@ -49,17 +51,14 @@ class Settings(BaseSettings):
 
     minio_host: str = "minio"
     minio_port: int = 9000
-    minio_access_key: str = "minioadmin"
-    minio_secret_key: str = "minioadmin"
-
-    aws_access_key_id: Optional[str] = None
-    aws_secret_access_key: Optional[str] = None
+    aws_access_key: Optional[str] = None
+    aws_secret_key: Optional[str] = None
     aws_region: str = "eu-west-2"
 
     object_store: str = "minio"
 
     bucket_name: str = "redbox-storage-dev"
-    embedding_model: str = "all-mpnet-base-v2"
+    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     sentence_transformers_home: str = "/app/models"
 
     embed_queue_name: str = "redbox-embedder-queue"
@@ -72,6 +71,7 @@ class Settings(BaseSettings):
     contact_email: str = "test@example.com"
     core_api_host: str = "http://core-api"
     core_api_port: int = 5002
+    streamlit_secret_key: str = "1n53cur3K3y"
 
     def elasticsearch_client(self) -> Elasticsearch:
         if isinstance(self.elastic, ElasticLocalSettings):
@@ -94,16 +94,16 @@ class Settings(BaseSettings):
         if self.object_store == "minio":
             client = boto3.client(
                 "s3",
-                aws_access_key_id=self.minio_access_key,
-                aws_secret_access_key=self.minio_secret_key,
+                aws_access_key_id=self.aws_access_key or "",
+                aws_secret_access_key=self.aws_secret_key or "",
                 endpoint_url=f"http://{self.minio_host}:{self.minio_port}",
             )
 
         elif self.object_store == "s3":
             client = boto3.client(
                 "s3",
-                aws_access_key_id=self.aws_access_key_id,
-                aws_secret_access_key=self.aws_secret_access_key,
+                aws_access_key_id=self.aws_access_key,
+                aws_secret_access_key=self.aws_secret_key,
                 region_name=self.aws_region,
             )
         elif self.object_store == "moto":
@@ -114,8 +114,8 @@ class Settings(BaseSettings):
 
             client = boto3.client(
                 "s3",
-                aws_access_key_id=self.aws_access_key_id,
-                aws_secret_access_key=self.aws_secret_access_key,
+                aws_access_key_id=self.aws_access_key,
+                aws_secret_access_key=self.aws_secret_key,
                 region_name=self.aws_region,
             )
         else:

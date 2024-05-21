@@ -58,8 +58,7 @@ filterwarnings = [
 [tool.pytest_env]
 ELASTIC__HOST = "localhost"
 MINIO_HOST = "localhost"
-OBJECT_STORE = "moto"
-EMBEDDING_MODEL = "paraphrase-albert-small-v2"
+EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 REDIS_HOST = "localhost"
 CONTACT_EMAIL = "test@example.com"
 CORE_API_HOST = "http://localhost"
@@ -92,6 +91,9 @@ pydantic-settings = "^2.2.1"
 langchain-elasticsearch = "^0.1.3"
 yarl = "^1.9.4"
 
+aiohttp = "^3.9.5"
+pyjwt = "^2.8.0"
+requests = "^2.32.0"
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.1.1"
 pytest-mock = "^3.14.0"

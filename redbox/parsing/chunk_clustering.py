@@ -1,5 +1,6 @@
 from functools import reduce
 from itertools import compress
+from typing import Optional
 
 import numpy as np
 import scipy
@@ -127,7 +128,7 @@ def create_pdist(token_counts, pair_embed_dist, weight_embed_dist=0.2, use_log=T
     return combined_dist
 
 
-def merge_chunk_metadata(meta_in: list[Metadata]) -> Metadata:
+def merge_chunk_metadata(meta_in: list[Optional[Metadata]]) -> Optional[Metadata]:
     """
     Combine metadata for multiple chunks from the same document.
     """

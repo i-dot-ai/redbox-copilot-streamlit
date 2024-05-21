@@ -65,18 +65,18 @@ def summary_tasks_to_docx(
 
     document.add_heading("Summarised Files", level=1)
     for file in reference_files:
-        document.add_paragraph(file.name, style="List Bullet")
+        document.add_paragraph(file.key, style="List Bullet")
 
     for task in tasks:
         document.add_heading(task.title, level=1)
 
         raw = task.response_text
         for uuid in task.file_uuids:
-            raw = raw.replace(f"<Doc{uuid}>", f"{uuid_to_file_map[uuid].name}")
+            raw = raw.replace(f"<Doc{uuid}>", f"{uuid_to_file_map[uuid].key}")
             raw = raw.replace(f"</Doc{uuid}>", "")
 
-            raw = raw.replace(f"Doc{uuid}", f"{uuid_to_file_map[uuid].name}")
-            raw = raw.replace(f"{uuid}", f"{uuid_to_file_map[uuid].name}")
+            raw = raw.replace(f"Doc{uuid}", f"{uuid_to_file_map[uuid].key}")
+            raw = raw.replace(f"{uuid}", f"{uuid_to_file_map[uuid].key}")
 
         html_raw = markdown.markdown(raw)
         temp_file = tempfile.NamedTemporaryFile(delete=True, suffix=".html")

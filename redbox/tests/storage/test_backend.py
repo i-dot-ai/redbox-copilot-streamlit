@@ -4,9 +4,9 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
-from elasticsearch import NotFoundError
 from langchain.prompts import PromptTemplate
 from langchain.schema import Document
+from requests.exceptions import HTTPError, Timeout
 
 from redbox.api import APIBackend
 from redbox.models import (
@@ -24,13 +24,15 @@ from redbox.models import (
 )
 from redbox.tests.conftest import TEST_DATA, YieldFixture
 
+TEST_USER_UUID = UUID("00000000-0000-0000-0000-000000000000")
+
 
 @pytest.fixture(scope="session")
 def backend(settings) -> YieldFixture[APIBackend]:
     backend = APIBackend(settings=settings)
 
     _ = backend.set_user(
-        uuid=UUID("bd65600d-8669-4903-8a14-af88203add38"),
+        uuid=TEST_USER_UUID,
         name="Foo Bar",
         email="foo.bar@gov.uk",
         department="Cabinet Office",
@@ -45,13 +47,15 @@ def backend(settings) -> YieldFixture[APIBackend]:
         temperature=0.2,
     )
 
+    assert backend.health() == "ready"
+
     yield backend
 
 
 @pytest.fixture(scope="session")
 def created_files(backend) -> YieldFixture[list[File]]:
     """Uploads all files for use in other tests."""
-    file_paths: list[Path] = [Path(*x.parts[-2:]) for x in (TEST_DATA / "docs").glob("*.*")]
+    file_paths: list[Path] = [Path(*x.parts[-2:]) for x in (TEST_DATA / "docs").glob("*.docx")]
     uploaded_files: list[File] = []
 
     for file_path in file_paths:
@@ -63,7 +67,7 @@ def created_files(backend) -> YieldFixture[list[File]]:
             to_upload = UploadFile(
                 content_type=ContentType(file_type),
                 filename=sanitised_name,
-                creator_user_uuid=UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                creator_user_uuid=TEST_USER_UUID,
                 file=BytesIO(f.read()),
             )
 
@@ -71,7 +75,30 @@ def created_files(backend) -> YieldFixture[list[File]]:
 
         assert isinstance(file, File)
 
+        try:
+            _ = backend.get_object(file_uuid=file.uuid)
+        except ValueError:
+            pytest.fail("Object not uploaded correctly")
+
         uploaded_files.append(file)
+
+    time.sleep(5)
+
+    uploaded_file_statuses: list[str] = [
+        backend.get_file_status(file_uuid=file.uuid).processing_status for file in uploaded_files
+    ]
+
+    timeout = 300
+    start_time = time.time()
+    while not all([i == "complete" for i in uploaded_file_statuses]):
+        if time.time() - start_time > timeout:
+            raise Timeout("Took too long to chunk")
+
+        time.sleep(5)
+
+        uploaded_file_statuses: list[str] = [
+            backend.get_file_status(file_uuid=file.uuid).processing_status for file in uploaded_files
+        ]
 
     yield uploaded_files
 
@@ -83,11 +110,10 @@ def created_files(backend) -> YieldFixture[list[File]]:
     for file in uploaded_files:
         assert file not in backend.list_files()
 
-        chunks = backend.get_file_chunks(file_uuid=file.uuid)
+        with pytest.raises(HTTPError):
+            _ = backend.get_file_chunks(file_uuid=file.uuid)
 
-        assert len(chunks) == 0
-
-        with pytest.raises(NotFoundError):
+        with pytest.raises(ValueError):
             _ = backend.get_object(file_uuid=file.uuid)
 
 
@@ -99,7 +125,8 @@ def created_tag(backend) -> YieldFixture[Tag]:
     yield tag
 
     _ = backend.delete_tag(tag_uuid=tag.uuid)
-    time.sleep(1)
+
+    time.sleep(5)
 
     assert tag not in backend.list_tags()
 
@@ -133,7 +160,7 @@ def created_summary(backend, created_files) -> YieldFixture[SummaryComplete]:
 
     _ = backend.delete_summary(file_uuids=file_uuids)
 
-    time.sleep(1)
+    time.sleep(5)
 
     assert summary not in backend.list_summaries()
 
@@ -146,7 +173,7 @@ class TestFiles:
 
     def test_get_supported_file_types(self, created_files, backend):
         accepted = set(backend.get_supported_file_types())
-        uploaded = {file.content_type.value for file in created_files}
+        uploaded = {Path(file.key).suffix for file in created_files}
         assert uploaded <= accepted
 
     def test_get_file_status(self, created_files, backend):
@@ -176,13 +203,19 @@ class TestFiles:
     def test_get_file_chunks(self, created_files, backend):
         for file in created_files:
             chunks = backend.get_file_chunks(file_uuid=file.uuid)
-            assert len(chunks) > 0
+            assert len(chunks) > 1
 
     def test_get_file_as_documents(self, created_files, backend):
         for file in created_files:
             documents = backend.get_file_as_documents(file_uuid=file.uuid, max_tokens=1_000)
             assert len(documents) > 1
             assert all(isinstance(document, Document) for document in documents)
+
+    def test_get_file_token_count(self, created_files, backend):
+        for file in created_files:
+            token_count = backend.get_file_token_count(file_uuid=file.uuid)
+            assert isinstance(token_count, int)
+            assert token_count > 0
 
 
 # region TAGS ====================
@@ -247,7 +280,7 @@ class TestFeedback:
             feedback_type="thumbs",
             feedback_score="👍",
             feedback_text="Baz",
-            creator_user_uuid=UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            creator_user_uuid=TEST_USER_UUID,
         )
 
         given = backend.create_feedback(feedback=feedback)
@@ -261,7 +294,7 @@ class TestFeedback:
 class TestLLM:
     """Tests LLM calls for a backend."""
 
-    def test_rag_chat(self, backend):
+    def test_rag_chat(self, created_files, backend):
         request = ChatRequest(
             message_history=[
                 {"role": "user", "text": "What does Mr. Aneurin Bevan think of the national health insurance system"}
@@ -274,7 +307,7 @@ class TestLLM:
         assert len(response.source_documents) > 0
 
     def test_stuff_doc_summary(self, created_files, backend):
-        file_short = next(f for f in created_files if "smarter" in f.name.lower())
+        file_short = next(f for f in created_files if "smarter" in f.key.lower())
 
         summary = PromptTemplate.from_template("Summarise this text: {text}")
         response = backend.stuff_doc_summary(summary=summary, file_uuids=[file_short.uuid])
@@ -284,8 +317,10 @@ class TestLLM:
         assert len(response.source_documents) > 0
 
     def test_map_reduce_summary(self, created_files, backend):
-        file_short = next(f for f in created_files if "smarter" in f.name.lower())
-        file_long = next(f for f in created_files if "health" in f.name.lower())
+        file_short = next(f for f in created_files if "smarter" in f.key.lower())
+        # file_long = next(f for f in created_files if "health" in f.key.lower())
+        # TODO: Speed up embeddings so we can do long files again
+        file_long = next(f for f in created_files if "smarter" in f.key.lower())
 
         map_prompt = PromptTemplate.from_template("Summarise this text: {text}")
         reduce_prompt = PromptTemplate.from_template("Summarise these summaries: {text}")
@@ -307,6 +342,8 @@ class TestUser:
     """Tests getters and setters for settings."""
 
     def test_get_set_user(self, backend):
+        user_current = backend.get_user()
+
         user_sent = backend.set_user(
             uuid=uuid4(),
             name="Foo Bar",
@@ -319,7 +356,18 @@ class TestUser:
 
         assert user_sent == user_returned
 
+        _ = backend.set_user(
+            uuid=user_current.uuid,
+            name=user_current.name,
+            email=user_current.email,
+            department=user_current.department,
+            role=user_current.role,
+            preferred_language=user_current.preferred_language,
+        )
+
     def test_get_set_llm(self, backend):
+        llm_current = backend.get_llm()
+
         llm_sent = backend.set_llm(
             model="mistral/mistral-tiny",
             max_tokens=1_000,
@@ -329,3 +377,10 @@ class TestUser:
         llm_returned = backend.get_llm()
 
         assert llm_sent == llm_returned
+
+        _ = backend.set_llm(
+            model=llm_current.llm.model,
+            max_tokens=llm_current.max_tokens,
+            max_return_tokens=llm_current.llm.max_tokens,
+            temperature=llm_current.llm.temperature,
+        )

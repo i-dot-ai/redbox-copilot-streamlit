@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Callable, Optional, Sequence
+from typing import Callable, Literal, Optional, Sequence
 from uuid import UUID
 
 from langchain.prompts.prompt import PromptTemplate
@@ -26,6 +26,11 @@ class Backend(ABC):
     @abstractmethod
     def status(self) -> dict[str, bool]:
         """Reports the current state of set variables."""
+        ...
+
+    @abstractmethod
+    def health(self) -> Literal["ready"]:
+        """Returns the health of the API."""
         ...
 
     @abstractmethod
@@ -86,6 +91,11 @@ class Backend(ABC):
     @abstractmethod
     def get_file_as_documents(self, file_uuid: UUID, max_tokens: int) -> Sequence[Document]:
         """Gets a file as LangChain Documents, splitting it by max_tokens."""
+        ...
+
+    @abstractmethod
+    def get_file_token_count(self, file_uuid: UUID) -> int:
+        """Gets a file's token count."""
         ...
 
     @abstractmethod
