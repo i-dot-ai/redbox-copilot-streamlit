@@ -9,6 +9,8 @@ from langchain.schema import Document
 from requests.exceptions import HTTPError, Timeout
 
 from redbox.api import APIBackend
+from redbox.definitions import Backend
+from redbox.local import LocalBackend
 from redbox.models import (
     ChatRequest,
     ChatResponse,
@@ -27,9 +29,10 @@ from redbox.tests.conftest import TEST_DATA, YieldFixture
 TEST_USER_UUID = UUID("00000000-0000-0000-0000-000000000000")
 
 
-@pytest.fixture(scope="session")
-def backend(settings) -> YieldFixture[APIBackend]:
-    backend = APIBackend(settings=settings)
+@pytest.fixture(scope="session", params=[LocalBackend, APIBackend])
+def backend(request, settings) -> YieldFixture[Backend]:
+    BackendClass = request.param
+    backend = BackendClass(settings=settings)
 
     _ = backend.set_user(
         uuid=TEST_USER_UUID,
