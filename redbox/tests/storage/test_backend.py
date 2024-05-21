@@ -82,6 +82,8 @@ def created_files(backend) -> YieldFixture[list[File]]:
 
         uploaded_files.append(file)
 
+    time.sleep(5)
+
     uploaded_file_statuses: list[str] = [
         backend.get_file_status(file_uuid=file.uuid).processing_status for file in uploaded_files
     ]
