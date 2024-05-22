@@ -7,7 +7,7 @@ import streamlit as st
 from redbox.models import ContentType, File, UploadFile
 from streamlit_app.utils import FilePreview, init_session_state
 
-st.set_page_config(page_title="Redbox Copilot - Files", page_icon="📮", layout="wide")
+st.set_page_config(page_title="Redbox - Files", page_icon="📮", layout="wide")
 
 # region Global and session state variables, functions ====================
 

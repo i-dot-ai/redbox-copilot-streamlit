@@ -19,7 +19,7 @@ from streamlit_app.utils import (
     submit_feedback,
 )
 
-st.set_page_config(page_title="Redbox Copilot - Ask the Box", page_icon="📮", layout="wide")
+st.set_page_config(page_title="Redbox - Ask the Box", page_icon="📮", layout="wide")
 
 # region Global and session state variables, functions ====================
 
@@ -97,7 +97,7 @@ def summary_to_markdown(tasks: list[SummaryTaskComplete], title: Optional[str] =
     out = ""
 
     if title is None:
-        out += "# Redbox Copilot \n\n"
+        out += "# Redbox \n\n"
     else:
         out += f"# {title} \n\n"
 
@@ -219,7 +219,7 @@ summary_file_select = st.multiselect(
 
 update_token_budget_tracker()
 
-submitted = st.button("Redbox Copilot Summary")
+submitted = st.button("Redbox Summary")
 
 # Using this state trick to allow post gen download without reload.
 if submitted:

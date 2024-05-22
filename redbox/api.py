@@ -424,23 +424,26 @@ class APIBackend(Backend):
         """Given a chat history, have the LLM respond with reference to files in the box."""
         if self._llm is None:
             raise ValueError("LLM is not set")
+        if self._user is None:
+            raise ValueError("User is not set")
 
-        *previous_history, question = chat_request.message_history
+        del callbacks
 
-        formatted_history = "\n".join([f"{msg.role}: {msg.text}" for msg in previous_history])
+        bearer_token = self.get_user().get_bearer_token(key=self._settings.streamlit_secret_key)
 
-        response = self._llm.chat_with_rag(
-            user_question=question.text,
-            user_info=self.get_user().dict_llm(),
-            chat_history=formatted_history,
-            callbacks=callbacks or [],
+        response = requests.post(
+            str(self._client / "chat/rag"),
+            json=chat_request.model_dump(),
+            headers={"Authorization": bearer_token},
+            timeout=10,
         )
+        response.raise_for_status()
+
+        response_json = response.json()
 
         return ChatResponse(
-            output_text=response["output_text"],
-            source_documents=[
-                SourceDocument.from_langchain_document(document=document) for document in response["input_documents"]
-            ],
+            output_text=response_json["output_text"],
+            source_documents=[SourceDocument(**document) for document in response_json["source_documents"]],
         )
 
     def stuff_doc_summary(

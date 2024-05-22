@@ -1,12 +1,12 @@
-# 📮 Redbox Copilot \[Streamlit app\]
+# 📮 Redbox \[Streamlit app\]
 
 > [!IMPORTANT]
 > Incubation Project: This project is an incubation project; as such, we DON’T recommend using it in any critical use case. This project is in active development and a work in progress. This project may one day Graduate, in which case this disclaimer will be removed.
 
-Redbox Copilot is a retrieval augmented generation (RAG) app that uses GenAI to chat with and summarise civil service documents. It's designed to handle a variety of administrative sources, such as letters, briefings, minutes, and speech transcripts.
+Redbox is a retrieval augmented generation (RAG) app that uses GenAI to chat with and summarise civil service documents. It's designed to handle a variety of administrative sources, such as letters, briefings, minutes, and speech transcripts.
 
-- **Better retrieval**. Redbox Copilot increases organisational memory by indexing documents
-- **Faster, accurate summarisation**. Redbox Copilot can summarise reports read months ago, supplement them with current work, and produce a first draft that lets civil servants focus on what they do best
+- **Better retrieval**. Redbox increases organisational memory by indexing documents
+- **Faster, accurate summarisation**. Redbox can summarise reports read months ago, supplement them with current work, and produce a first draft that lets civil servants focus on what they do best
 
 This repo contains a [Streamlit frontend](https://streamlit.io) for the [core Redbox project](https://github.com/i-dot-ai/redbox-copilot).
 
