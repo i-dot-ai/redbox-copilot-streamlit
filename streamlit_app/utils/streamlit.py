@@ -2,6 +2,7 @@ import base64
 import os
 from datetime import datetime
 from io import BytesIO
+from pathlib import Path
 from typing import Callable, Optional
 from uuid import UUID
 
@@ -16,6 +17,7 @@ from loguru import logger
 from lxml.html.clean import Cleaner
 
 from redbox.api import APIBackend
+from redbox.definitions import Backend
 from redbox.local import LocalBackend
 from redbox.models import ChatMessage, Feedback, File, Settings
 
@@ -172,7 +174,7 @@ class StreamlitStreamHandler(BaseCallbackHandler):
 class FilePreview(object):
     """Class for rendering files to streamlit UI"""
 
-    def __init__(self, backend: APIBackend):
+    def __init__(self, backend: Backend):
         self.cleaner = Cleaner()
         self.cleaner.javascript = True
         self.backend = backend
@@ -284,3 +286,17 @@ def change_selected_model() -> None:
         temperature=st.session_state.model_params["temperature"],
     )
     st.toast(f"Loaded {st.session_state.model_select}")
+
+
+@st.experimental_dialog("File preview", width="large")
+def preview_modal(file: File, backend: Backend, page_number: Optional[int] = None):
+    file_preview = FilePreview(backend=backend)
+
+    content_type = Path(file.key).suffix
+    if content_type in file_preview.render_methods:
+        if (content_type == ".pdf") & ("page_number" != None):
+            file_preview._render_pdf(file, page_number=page_number)
+        else:
+            file_preview.st_render(file, content_type=content_type)
+    else:
+        st.warning(f"File rendering not yet supported for {content_type}")

@@ -12,6 +12,7 @@ from streamlit_app.utils.streamlit import (
     StreamlitStreamHandler,
     change_selected_model,
     init_session_state,
+    preview_modal,
     submit_feedback,
 )
 
@@ -20,6 +21,7 @@ __all__ = [
     "StreamlitStreamHandler",
     "FilePreview",
     "submit_feedback",
+    "preview_modal",
     "change_selected_model",
     "get_link_html",
     "get_file_link",

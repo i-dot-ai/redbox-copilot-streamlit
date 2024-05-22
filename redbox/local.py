@@ -147,7 +147,7 @@ class LocalBackend(Backend):
                 creator_user_uuid=chunk.creator_user_uuid,
                 embedding=embedding,
             )
-            for chunk, embedding in zip(chunks, chunk_embeddings, strict=False)
+            for chunk, embedding in zip(chunks, chunk_embeddings, strict=True)
         ]
 
         # Save
