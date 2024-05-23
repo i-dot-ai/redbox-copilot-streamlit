@@ -72,6 +72,7 @@ class Settings(BaseSettings):
     core_api_host: str = "http://core-api"
     core_api_port: int = 5002
     streamlit_secret_key: str = "1n53cur3K3y"
+    streamlit_backend: Literal["LOCAL", "API"] = "LOCAL"
 
     def elasticsearch_client(self) -> Elasticsearch:
         if isinstance(self.elastic, ElasticLocalSettings):
