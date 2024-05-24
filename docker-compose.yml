@@ -40,8 +40,28 @@ services:
       dockerfile: ./worker/Dockerfile
       args:
         - EMBEDDING_MODEL=${EMBEDDING_MODEL}
-    env_file:
-      - .env
+    environment:
+      # Chunking
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL}
+      - PARTITION_STRATEGY=${PARTITION_STRATEGY}
+      # Database
+      - ELASTIC__HOST=${ELASTIC__HOST}
+      - ELASTIC__VERSION=${ELASTIC__VERSION}
+      - ELASTIC__USER=${ELASTIC__USER}
+      - ELASTIC__PASSWORD=${ELASTIC__PASSWORD}
+      - ELASTIC__PORT=${ELASTIC__PORT}
+      - ELASTIC__SCHEME=${ELASTIC__SCHEME}
+      # Object storage
+      - MINIO_HOST=${MINIO_HOST}
+      - MINIO_PORT=${MINIO_PORT}
+      - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
+      - AWS_SECRET_KEY=${AWS_SECRET_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - OBJECT_STORE=${OBJECT_STORE}
+      - BUCKET_NAME=${BUCKET_NAME}
+      # Etc
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     depends_on:
       - redis
       - elasticsearch
@@ -62,9 +82,27 @@ services:
       - 5002:5002
     environment:
       - PORT=5002
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-    env_file:
-      - .env
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL}
+      # Database
+      - ELASTIC__HOST=${ELASTIC__HOST}
+      - ELASTIC__VERSION=${ELASTIC__VERSION}
+      - ELASTIC__USER=${ELASTIC__USER}
+      - ELASTIC__PASSWORD=${ELASTIC__PASSWORD}
+      - ELASTIC__PORT=${ELASTIC__PORT}
+      - ELASTIC__SCHEME=${ELASTIC__SCHEME}
+      # Object storage
+      - MINIO_HOST=${MINIO_HOST}
+      - MINIO_PORT=${MINIO_PORT}
+      - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
+      - AWS_SECRET_KEY=${AWS_SECRET_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - OBJECT_STORE=${OBJECT_STORE}
+      - BUCKET_NAME=${BUCKET_NAME}
+      # Etc
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     networks:
       - redbox-app-network
     depends_on:
