@@ -75,21 +75,24 @@ def update_token_budget_tracker():
     st.session_state.current_token_count = current_token_count
 
 
-def clear_params():
-    st.query_params.clear()
-    unsubmit_session_state()
-
-
 def unsubmit_session_state():
     update_token_budget_tracker()
     st.session_state.summary = []
     st.session_state.submitted = False
 
 
+def clear_params():
+    st.query_params.clear()
+    unsubmit_session_state()
+
+
+def delete_summary(file_uuids: list[UUID]) -> None:
+    _ = st.session_state.backend.delete_summary(file_uuids=file_uuids)
+    clear_params()
+
+
 def on_summary_of_summaries_mode_change():
     st.session_state.summary_of_summaries_mode = not (st.session_state.summary_of_summaries_mode)
-    if st.session_state.summary_of_summaries_mode:
-        st.sidebar.info("Will summarise each document individually and combine them.")
     unsubmit_session_state()
 
 
@@ -134,13 +137,6 @@ def summary_to_docx(tasks: list[SummaryTaskComplete], title: Optional[str] = Non
     return bytes_document
 
 
-def delete_summary(file_uuids: list[UUID]) -> None:
-    _ = st.session_state.backend.delete_summary(file_uuids=file_uuids)
-    st.session_state.summary = []
-    st.session_state.submitted = False
-    st.query_params.clear()
-
-
 # region Sidebar ====================
 
 
@@ -158,8 +154,12 @@ with st.sidebar:
     )
     token_budget_desc = st.caption(body=f"Word Budget: {st.session_state.current_token_count}/{MAX_TOKENS}")
 
-    summary_of_summaries_mode = st.toggle(
+    if st.session_state.summary_of_summaries_mode:
+        st.info("Will summarise each document individually and combine them.")
+
+    st.toggle(
         "Summary of Summaries",
+        key="summary_of_summaries_mode_toggle",
         value=st.session_state.summary_of_summaries_mode,
         on_change=on_summary_of_summaries_mode_change,
     )
@@ -171,6 +171,7 @@ with st.sidebar:
 
     st.download_button(
         label="Download DOCX",
+        key="download_docx_button",
         data=summary_to_docx(tasks=st.session_state.summary, title=tag_name),
         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         file_name=f"{summary_file_name_root}.docx",
@@ -178,13 +179,15 @@ with st.sidebar:
 
     st.download_button(
         label="Download TXT",
+        key="download_txt_button",
         data=summary_to_markdown(tasks=st.session_state.summary, title=tag_name),
         mime="text/plain",
         file_name=f"{summary_file_name_root}.txt",
     )
 
-    delete_summary_button = st.button(
+    st.button(
         label="Delete Summary",
+        key="delete_summary_button",
         on_click=delete_summary,
         kwargs={"file_uuids": getattr(st.session_state, "selected_files", [])},
     )

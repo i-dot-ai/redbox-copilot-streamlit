@@ -1,5 +1,6 @@
 from streamlit_app.utils.formatting import (
     format_feedback_kwargs,
+    format_file_status,
     get_document_citation_assets,
     get_file_link,
     get_link_html,
@@ -29,6 +30,7 @@ __all__ = [
     "response_to_message",
     "format_feedback_kwargs",
     "slugify",
+    "format_file_status",
 ]
 
 LOG = get_logger()

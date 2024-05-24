@@ -90,10 +90,10 @@ markdown = "^3.6"
 pydantic-settings = "^2.2.1"
 langchain-elasticsearch = "^0.1.3"
 yarl = "^1.9.4"
-
 aiohttp = "^3.9.5"
 pyjwt = "^2.8.0"
 requests = "^2.32.0"
+
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.1.1"
 pytest-mock = "^3.14.0"
@@ -127,14 +127,8 @@ anthropic = "^0.25.1"
 litellm = "^1.35.2"
 openai = "^1.17.0"
 sentence-transformers = "^2.6.0"
-torch = [
-  {version = "^2.2.2+cpu", source = "pytorch-cpu-src", platform = "linux"},
-  {version = "^2.2.2", platform = "darwin"}
-]
-torchvision = [
-  {version = "^0.17.2+cpu", source = "pytorch-cpu-src", platform = "linux"},
-  {version = "^0.17.2", platform = "darwin"}
-]
+torch = "2.2.2"
+torchvision = "0.17.2"
 
 [tool.poetry.group.streamlit-app.dependencies]
 streamlit = "^1.33.0"
@@ -144,15 +138,9 @@ streamlit-feedback = "^0.1.3"
 html2markdown = "^0.1.7"
 unstructured = {extras = ["all-docs"], version = "^0.13.2"}
 
-
 [tool.poetry.group.eval.dependencies]
 jupyter = "^1.0.0"
 datasets = "^2.19.1"
-
-[[tool.poetry.source]]
-name = "pytorch-cpu-src"
-url = "https://download.pytorch.org/whl/cpu"
-priority = "explicit"
 
 [build-system]
 requires = ["poetry-core"]
