@@ -6,6 +6,9 @@ name: Backend unit tests
 on:
     pull_request:
 
+env:
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
 permissions:
     contents: read
 
@@ -80,8 +83,6 @@ jobs:
           sleep 30
 
       - name: Run unit tests with pytest
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           poetry run pytest
 
