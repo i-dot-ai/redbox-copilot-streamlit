@@ -31,4 +31,8 @@ class User(PersistableModel):
     def get_bearer_token(self, key: str) -> str:
         """the bearer token expected by the core-api"""
         bearer_token = jwt.encode({"user_uuid": str(self.uuid)}, key=key, algorithm="HS512")
+
+        if len(bearer_token) == 0:
+            raise ValueError("Bearer token not generated for %s", self.uuid)
+
         return f"Bearer {bearer_token}"
