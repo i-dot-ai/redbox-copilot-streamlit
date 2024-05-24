@@ -127,8 +127,14 @@ anthropic = "^0.25.1"
 litellm = "^1.35.2"
 openai = "^1.17.0"
 sentence-transformers = "^2.6.0"
-torch = "2.2.2"
-torchvision = "0.17.2"
+torch = [
+  {version = "^2.2.2+cpu", source = "pytorch-cpu-src", platform = "linux"},
+  {version = "^2.2.2", platform = "darwin"}
+]
+torchvision = [
+  {version = "^0.17.2+cpu", source = "pytorch-cpu-src", platform = "linux"},
+  {version = "^0.17.2", platform = "darwin"}
+]
 
 [tool.poetry.group.streamlit-app.dependencies]
 streamlit = "^1.33.0"
@@ -141,6 +147,11 @@ unstructured = {extras = ["all-docs"], version = "^0.13.2"}
 [tool.poetry.group.eval.dependencies]
 jupyter = "^1.0.0"
 datasets = "^2.19.1"
+
+[[tool.poetry.source]]
+name = "pytorch-cpu-src"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
 
 [build-system]
 requires = ["poetry-core"]
