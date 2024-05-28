@@ -15,8 +15,37 @@ services:
       args:
         - EMBEDDING_MODEL=${EMBEDDING_MODEL}
         - SENTENCE_TRANSFORMERS_HOME=${SENTENCE_TRANSFORMERS_HOME}
-    env_file:
-      - .env
+    environment:
+      # LLM
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      # Development
+      - DEV_MODE=${DEV_MODE}
+      # Database
+      - ELASTIC__HOST=${ELASTIC__HOST}
+      - ELASTIC__VERSION=${ELASTIC__VERSION}
+      - ELASTIC__USER=${ELASTIC__USER}
+      - ELASTIC__PASSWORD=${ELASTIC__PASSWORD}
+      - ELASTIC__PORT=${ELASTIC__PORT}
+      - ELASTIC__SCHEME=${ELASTIC__SCHEME}
+      # Object storage
+      - MINIO_HOST=${MINIO_HOST}
+      - MINIO_PORT=${MINIO_PORT}
+      - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
+      - AWS_SECRET_KEY=${AWS_SECRET_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - OBJECT_STORE=${OBJECT_STORE}
+      - BUCKET_NAME=${BUCKET_NAME}
+      # Embedding and chunking
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL}
+      - SENTENCE_TRANSFORMERS_HOME=${SENTENCE_TRANSFORMERS_HOME}
+      - PARTITION_STRATEGY=${PARTITION_STRATEGY}
+      # Streamlit app
+      - STREAMLIT_SECRET_KEY=${STREAMLIT_SECRET_KEY}
+      - STREAMLIT_BACKEND=${STREAMLIT_BACKEND}
+      - CORE_API_HOST=${CORE_API_HOST}
+      - CORE_API_PORT=${CORE_API_PORT}
+      - CONTACT_EMAIL=${CONTACT_EMAIL}
     ports:
       - 8501:8501
     volumes:
@@ -141,9 +170,10 @@ services:
       - 9200:9200
       - 9300:9300
     environment:
-      # node.name: elasticsearch
+      - node.name=${ELASTIC__HOST}
+      - ELASTIC_USER=${ELASTIC__USER}
+      - ELASTIC_PASSWORD=${ELASTIC__PASSWORD}
       - ES_JAVA_OPTS=-Xms512m -Xmx512m
-      # ELASTIC__PASSWORD: ${ELASTIC__PASSWORD:-}
       - bootstrap.memory_lock=true
       - discovery.type=single-node
       - xpack.security.enabled=false
@@ -161,8 +191,6 @@ services:
       - "6379:6379"
     volumes:
       - redis:/data/redis
-    env_file:
-      - .env
     networks:
       - redbox-app-network
 

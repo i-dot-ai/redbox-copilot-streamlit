@@ -128,8 +128,6 @@ jobs:
           sudo mkdir -p /app
           sudo chmod -R 777 /app
 
-          cp .env.example .env
-
           make up
 
       - name: Wait 30s for services to be ready
