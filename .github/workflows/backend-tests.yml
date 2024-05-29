@@ -6,6 +6,63 @@ name: Backend unit tests
 on:
     pull_request:
 
+env:
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  # Database
+  DEV_MODE: true
+  ELASTIC__HOST: elasticsearch
+  ELASTIC__VERSION: 8.11.0
+  ELASTIC__USER: elastic
+  ELASTIC__PASSWORD: redboxpass  # pragma: allowlist secret
+  ELASTIC__PORT: 9200
+  ELASTIC__SCHEME: http
+  ELASTIC__SUBSCRIPTION_LEVEL: basic
+  KIBANA_SYSTEM_PASSWORD: redboxpass  # pragma: allowlist secret
+  METRICBEAT_INTERNAL_PASSWORD: redboxpass  # pragma: allowlist secret
+  FILEBEAT_INTERNAL_PASSWORD: redboxpass  # pragma: allowlist secret
+  HEARTBEAT_INTERNAL_PASSWORD: redboxpass  # pragma: allowlist secret
+  MONITORING_INTERNAL_PASSWORD: redboxpass  # pragma: allowlist secret
+  BEATS_SYSTEM_PASSWORD: redboxpass  # pragma: allowlist secret
+  # Object storage
+  MINIO_HOST: minio
+  MINIO_PORT: 9000
+  AWS_ACCESS_KEY: minioadmin
+  AWS_SECRET_KEY: minioadmin  # pragma: allowlist secret
+  AWS_REGION: eu-west-2
+  OBJECT_STORE: minio
+  BUCKET_NAME: redbox-storage-dev
+  # Embedding and chunking
+  EMBEDDING_MODEL: sentence-transformers/all-MiniLM-L6-v2
+  SENTENCE_TRANSFORMERS_HOME: /app/models
+  PARTITION_STRATEGY: fast
+  # Redis
+  EMBED_QUEUE_NAME: redbox-embedder-queue
+  INGEST_QUEUE_NAME: redbox-ingester-queue
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+  # Streamlit app
+  CONTACT_EMAIL: redbox-copilot@cabinetoffice.gov.uk
+  STREAMLIT_SECRET_KEY: 1n53cur3K3y  # pragma: allowlist secret
+  STREAMLIT_BACKEND: LOCAL
+  CORE_API_HOST: http://core-api
+  CORE_API_PORT: 5002
+  # Django app (required for core API to work)
+  DJANGO_SETTINGS_MODULE: redbox_app.settings
+  DEBUG: True
+  DJANGO_SECRET_KEY: 1n53cur3K3y  # pragma: allowlist secret
+  DJANGO_LOG_LEVEL: WARNING
+  ENVIRONMENT: LOCAL
+  POSTGRES_HOST: db
+  POSTGRES_USER: redbox-core
+  POSTGRES_DB: redbox-core
+  POSTGRES_PASSWORD: insecure  # pragma: allowlist secret
+  EMAIL_BACKEND_TYPE: CONSOLE
+  NOTIFY_API_KEY: f4k3_k3y  # pragma: allowlist secret
+  FROM_EMAIL: test@example.com
+  GOVUK_NOTIFY_PLAIN_EMAIL_TEMPLATE_ID: example-id
+  EMAIL_FILE_PATH: '/app/mail'
+  USE_STREAMING: False
+
 permissions:
     contents: read
 
@@ -71,8 +128,6 @@ jobs:
           sudo mkdir -p /app
           sudo chmod -R 777 /app
 
-          cp .env.example .env
-
           make up
 
       - name: Wait 30s for services to be ready
@@ -80,8 +135,6 @@ jobs:
           sleep 30
 
       - name: Run unit tests with pytest
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           poetry run pytest
 

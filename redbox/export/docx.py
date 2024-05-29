@@ -61,7 +61,7 @@ def summary_tasks_to_docx(
     if title is not None:
         document.add_heading(title, level=0)
     else:
-        document.add_heading("Redbox Copilot", level=0)
+        document.add_heading("Redbox", level=0)
 
     document.add_heading("Summarised Files", level=1)
     for file in reference_files:

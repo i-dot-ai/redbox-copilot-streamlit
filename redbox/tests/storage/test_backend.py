@@ -359,7 +359,7 @@ class TestUser:
 
         assert user_sent == user_returned
 
-        _ = backend.set_user(
+        user_reset = backend.set_user(
             uuid=user_current.uuid,
             name=user_current.name,
             email=user_current.email,
@@ -367,6 +367,13 @@ class TestUser:
             role=user_current.role,
             preferred_language=user_current.preferred_language,
         )
+
+        assert user_current.uuid == user_reset.uuid
+        assert user_current.name == user_reset.name
+        assert user_current.email == user_reset.email
+        assert user_current.department == user_reset.department
+        assert user_current.role == user_reset.role
+        assert user_current.preferred_language == user_reset.preferred_language
 
     def test_get_set_llm(self, backend):
         llm_current = backend.get_llm()
@@ -381,9 +388,14 @@ class TestUser:
 
         assert llm_sent == llm_returned
 
-        _ = backend.set_llm(
+        llm_reset = backend.set_llm(
             model=llm_current.llm.model,
             max_tokens=llm_current.max_tokens,
             max_return_tokens=llm_current.llm.max_tokens,
             temperature=llm_current.llm.temperature,
         )
+
+        assert llm_current.llm.model == llm_reset.llm.model
+        assert llm_current.max_tokens == llm_reset.max_tokens
+        assert llm_current.llm.max_tokens == llm_current.llm.max_tokens
+        assert llm_current.llm.temperature == llm_reset.llm.temperature

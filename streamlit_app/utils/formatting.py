@@ -5,14 +5,7 @@ from uuid import UUID
 
 import streamlit as st
 
-from redbox.models import (
-    ChatMessage,
-    ChatMessageSourced,
-    ChatResponse,
-    ChatSource,
-    File,
-    SourceDocument,
-)
+from redbox.models import ChatMessage, ChatMessageSourced, ChatResponse, ChatSource, File, FileStatus, SourceDocument
 
 
 def get_link_html(page: str, text: str, query_dict: Optional[dict] = None, target: str = "_self") -> str:
@@ -61,7 +54,7 @@ def get_file_link(file: File, page: Optional[int] = None) -> str:
         query_dict["page_number"] = str(page)
 
     link_html = get_link_html(
-        page="Preview_Files",
+        page="Documents",
         query_dict=query_dict,
         text=presentation_name,
     )
@@ -87,7 +80,9 @@ def response_to_message(response: ChatResponse) -> ChatMessage | ChatMessageSour
     sources: list[ChatSource] = []
     if response.source_documents is not None:
         for source in response.source_documents:
-            assert isinstance(source, SourceDocument)
+            if not isinstance(source, SourceDocument):
+                raise ValueError("Got SourceDocument of type %s", type(source))
+
             chat_source = ChatSource(document=source, html=get_document_citation_assets(source)[2])
             sources.append(chat_source)
         return ChatMessageSourced(text=response.output_text, role="ai", sources=sources)
@@ -110,3 +105,16 @@ def slugify(text: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", slug).strip("-")
     slug = re.sub(r"[-]+", "-", slug)
     return slug
+
+
+def format_file_status(status: FileStatus) -> str:
+    status_title = status.processing_status.title()
+    n_chunks = 0
+    if status.chunk_statuses is not None:
+        n_chunks = len(status.chunk_statuses)
+
+    if status.processing_status == "embedding" and n_chunks > 0 and status.chunk_statuses is not None:
+        n_chunks_embedded = len([chunk for chunk in status.chunk_statuses if chunk.embedded])
+        return f"{status_title} ({n_chunks_embedded / n_chunks:.0%})"
+    else:
+        return status_title

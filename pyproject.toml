@@ -90,10 +90,10 @@ markdown = "^3.6"
 pydantic-settings = "^2.2.1"
 langchain-elasticsearch = "^0.1.3"
 yarl = "^1.9.4"
-
 aiohttp = "^3.9.5"
 pyjwt = "^2.8.0"
 requests = "^2.32.0"
+
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.1.1"
 pytest-mock = "^3.14.0"
@@ -143,7 +143,6 @@ loguru = "^0.7.2"
 streamlit-feedback = "^0.1.3"
 html2markdown = "^0.1.7"
 unstructured = {extras = ["all-docs"], version = "^0.13.2"}
-
 
 [tool.poetry.group.eval.dependencies]
 jupyter = "^1.0.0"

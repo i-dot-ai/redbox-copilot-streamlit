@@ -1,5 +1,6 @@
 from streamlit_app.utils.formatting import (
     format_feedback_kwargs,
+    format_file_status,
     get_document_citation_assets,
     get_file_link,
     get_link_html,
@@ -12,6 +13,7 @@ from streamlit_app.utils.streamlit import (
     StreamlitStreamHandler,
     change_selected_model,
     init_session_state,
+    preview_modal,
     submit_feedback,
 )
 
@@ -20,6 +22,7 @@ __all__ = [
     "StreamlitStreamHandler",
     "FilePreview",
     "submit_feedback",
+    "preview_modal",
     "change_selected_model",
     "get_link_html",
     "get_file_link",
@@ -27,6 +30,7 @@ __all__ = [
     "response_to_message",
     "format_feedback_kwargs",
     "slugify",
+    "format_file_status",
 ]
 
 LOG = get_logger()

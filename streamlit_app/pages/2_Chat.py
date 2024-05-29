@@ -15,7 +15,7 @@ from streamlit_app.utils import (
     submit_feedback,
 )
 
-st.set_page_config(page_title="Redbox Copilot - Ask the Box", page_icon="📮", layout="wide")
+st.set_page_config(page_title="Redbox - Ask the Box", page_icon="📮", layout="wide")
 
 # region Global and session state variables, functions ====================
 
@@ -37,7 +37,7 @@ with st.spinner("Loading..."):
         ),
         ChatMessage(
             role="ai",
-            text="Hi, I'm Redbox Copilot. How can I help you?",
+            text="Hi, I'm Redbox. How can I help you?",
         ),
     ]
 

@@ -5,9 +5,9 @@ from uuid import UUID
 import streamlit as st
 
 from redbox.models import ContentType, File, UploadFile
-from streamlit_app.utils import FilePreview, init_session_state
+from streamlit_app.utils import format_file_status, init_session_state, preview_modal
 
-st.set_page_config(page_title="Redbox Copilot - Files", page_icon="📮", layout="wide")
+st.set_page_config(page_title="Redbox - Files", page_icon="📮", layout="wide")
 
 # region Global and session state variables, functions ====================
 
@@ -16,26 +16,24 @@ with st.spinner("Loading..."):
     TAGS = st.session_state.backend.list_tags()
     FILES = st.session_state.backend.list_files()
     URL_PARAMS = st.query_params.to_dict()
-    FILE_PREVIEW = FilePreview(backend=st.session_state.backend)
 
+# region Displaying query params ====================
 
-@st.experimental_dialog("File preview", width="large")
-def preview_modal(file):
-    content_type = Path(file.key).suffix
-    if content_type in FILE_PREVIEW.render_methods:
-        if (content_type == ".pdf") & ("page_number" in URL_PARAMS):
-            page_number_raw = URL_PARAMS["page_number"]
-            if page_number_raw[0] == "[":
-                page_numbers = page_number_raw[1:-1].split(r",")
-                page_number = min([int(p) for p in page_numbers])
-            else:
-                page_number = int(page_number_raw)
-            FILE_PREVIEW._render_pdf(file, page_number=page_number)
+if "file_uuid" in URL_PARAMS:
+    file = st.session_state.backend.get_file(file_uuid=URL_PARAMS["file_uuid"])
+
+    page_number = None
+    if "page_number" in URL_PARAMS:
+        page_number_raw = URL_PARAMS["page_number"]
+        if page_number_raw[0] == "[":
+            page_numbers = page_number_raw[1:-1].split(r",")
+            page_number = min([int(p) for p in page_numbers])
         else:
-            FILE_PREVIEW.st_render(file, content_type=content_type)
-    else:
-        st.warning(f"File rendering not yet supported for {content_type}")
+            page_number = int(page_number_raw)
 
+    preview_modal(file=file, backend=st.session_state.backend, page_number=page_number)
+
+    st.query_params.clear()
 
 # region Upload form ====================
 
@@ -104,17 +102,23 @@ with st.form("Upload", clear_on_submit=True):
 
 st.divider()
 
+col_name, col_status, col_preview, col_delete = st.columns((2, 1, 1, 1))
+col_name.write("##### File")
+col_status.write("##### Status")
+col_preview.write("##### Preview")
+col_delete.write("##### Delete")
+
 for i, file in enumerate(FILES):
     col_name, col_status, col_preview, col_delete = st.columns((2, 1, 1, 1))
     status = st.session_state.backend.get_file_status(file_uuid=file.uuid)
 
     col_name.write(file.key)
-    col_status.write(status.processing_status.title())
+    col_status.write(format_file_status(status))
     col_preview.button("🔍 Preview File", key=f"preview_{i}")
     col_delete.button("🗑️ Delete File", key=f"delete_{i}", type="primary")
 
-    if st.session_state[f"preview_{i}"] or "file_uuid" in URL_PARAMS:
-        preview_modal(file)
+    if st.session_state[f"preview_{i}"]:
+        preview_modal(file=file, backend=st.session_state.backend)
 
     if st.session_state[f"delete_{i}"]:
         file = st.session_state.backend.delete_file(file_uuid=file.uuid)
